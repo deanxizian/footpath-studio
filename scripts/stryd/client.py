@@ -103,6 +103,16 @@ class Stryd:
         self.http = http or HTTP()
 
     def refresh(self):
+        try:
+            self._refresh()
+        except SyncError as error:
+            # Callers must stop the whole scan even when the underlying failure
+            # comes from GitHub persistence or an uncertain network response.
+            raise SyncError('Stryd session refresh/persistence failed: ' + str(error)) from None
+        except Exception:
+            raise SyncError('Stryd session refresh/persistence failed; reconnect using docs/stryd-sync.md') from None
+
+    def _refresh(self):
         if not self.session.get('refresh_token') or not self.session.get('client_id'):
             raise SyncError('Stryd session expired. Reconnect Stryd using docs/stryd-sync.md.')
         # Refresh tokens may rotate. Never retry this POST after an uncertain response.
@@ -191,4 +201,3 @@ class Stryd:
             raise SyncError('Footpath download was denied by storage')
         as_json(raw, 'Footpath storage')
         return raw
-

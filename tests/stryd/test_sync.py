@@ -120,6 +120,21 @@ class FetchTests(unittest.TestCase):
         self.assertEqual(len(result['failed']), 1)
         self.assertEqual(len(source.calls), 1)
 
+    def test_refresh_network_or_storage_failure_stops_the_whole_scan(self):
+        rotated = reply({'access_token': 'rotated', 'refresh_token': {'token': 'r', 'client': {'id': 'c'}}})
+        for refresh_reply in [SyncError('Network request failed'), rotated]:
+            http = FakeHTTP([Reply(401, b'', {}), refresh_reply])
+            def fail(_):
+                raise SyncError('GitHub asset upload returned HTTP 503')
+            source = Stryd(SESSION, fail, http)
+            source.calendar = lambda: [activity(1), activity(2)]
+            result = synchronize(source, {}, {'runs': []}, self.directory, now=NOW)
+            self.assertEqual(len(result['failed']), 1)
+            self.assertIn('session', result['failed'][0]['reason'])
+            # Do not try another refresh via the next activity after an uncertain
+            # POST, or use the rotated token before persistence has succeeded.
+            self.assertEqual(len(http.calls), 2)
+
     def test_geometry_rejects_mismatched_run_and_preserves_coordinates(self):
         act = activity()
         content = raw(act)
