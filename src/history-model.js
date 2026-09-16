@@ -51,7 +51,7 @@ export function runFromRaw(input, fileName) {
   const data = normalizeData(input, fileName);
   const rows = deriveRows(data);
   return {
-    id: `import-${data.start}-${data.end}-${rows.length}`,
+    id: `import-${data.start}-${data.end}-${rows.length}-${data.pointCount}`,
     title: data.title,
     start: data.start,
     end: data.end,
@@ -118,6 +118,17 @@ export function defaultTarget(runs) {
     0.5,
   );
   return middle === null ? 3.5 : Math.round(middle / 0.05) * 0.05;
+}
+
+export function targetSpeedOptions(runs, current) {
+  const values = [
+    ...Array.from({ length: 71 }, (_, index) => 2 + index * 0.05),
+    defaultTarget(runs),
+    current,
+  ];
+  return [
+    ...new Set(values.filter(Number.isFinite).map((value) => value.toFixed(2))),
+  ].sort((a, b) => Number(a) - Number(b));
 }
 
 export function analyzeHistory(

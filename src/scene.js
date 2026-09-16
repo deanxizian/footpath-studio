@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Line2 } from "three/addons/lines/Line2.js";
 import { LineGeometry } from "three/addons/lines/LineGeometry.js";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
-import { COLORS, lineSegmentPositions, plotPoint } from "./model";
+import { COLORS, lineSegmentPositions, plotPoint } from "./model.js";
 
 function disposeGroup(group) {
   group.traverse((o) => {
@@ -400,11 +400,13 @@ export class FootpathScene {
   copyCamera(source) {
     this.view = source.view;
     this.updateLabelVisibility(this.view);
-    this.camera.position.copy(source.camera.position);
+    const pan = source.controls.target.clone().sub(source.center);
+    const offset = source.camera.position.clone().sub(source.controls.target);
+    this.controls.target.copy(this.center).add(pan);
+    this.camera.position.copy(this.controls.target).add(offset);
     this.camera.quaternion.copy(source.camera.quaternion);
     this.camera.up.copy(source.camera.up);
     this.camera.zoom = source.camera.zoom;
-    this.controls.target.copy(source.controls.target);
     this.camera.updateProjectionMatrix();
   }
 
