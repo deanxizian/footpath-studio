@@ -1,7 +1,7 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { packMonthlyHistory } from "./monthly-history.mjs";
-import { validateHistorySource } from "./history-source.mjs";
+import { resolveRepository } from "./history-source.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const args = process.argv.slice(2);
@@ -14,16 +14,14 @@ const value = (flag, fallback) => {
 };
 const source = value("--source", join(root, "private-data"));
 const output = value("--output", join(root, ".cache/monthly-publication"));
-const config = validateHistorySource(
-  JSON.parse(await readFile(join(root, "history-source.json"), "utf8")),
-);
+const repository = resolveRepository({ cwd: root });
 await mkdir(output, { recursive: true });
 const manifest = await packMonthlyHistory(
   source,
   output,
-  `https://github.com/${config.repository}`,
+  `https://github.com/${repository}`,
   {
-    owner: config.repository.split("/")[0],
+    owner: repository.split("/")[0],
     snapshotDate: new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Shanghai",
     }).format(new Date()),

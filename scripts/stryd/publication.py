@@ -131,7 +131,7 @@ def publish(github, manifest, directory, commit, before_discovery=lambda: None):
 def deploy_site(revision, hook, site, force=False, http=None, pause=time.sleep, attempts=60):
     """Compare production with Releases on every run so failed builds retry later."""
     if not re.fullmatch(r'https://api\.vercel\.com/v1/integrations/deploy/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+', hook or ''):
-        raise SyncError('Configure the VERCEL_DEPLOY_HOOK environment secret')
+        raise SyncError('Configure the VERCEL_DEPLOY_HOOK repository secret')
     parts = urllib.parse.urlsplit(site or '')
     if parts.scheme != 'https' or not parts.netloc or parts.username or parts.password or parts.query or parts.fragment or parts.path not in ('', '/'):
         raise SyncError('Configure STRYD_SITE_URL with the HTTPS production origin')

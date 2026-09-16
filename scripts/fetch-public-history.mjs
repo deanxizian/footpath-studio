@@ -12,7 +12,7 @@ import {
   assembleMonthlyHistory,
   validatePublishedHistory,
 } from "./monthly-history.mjs";
-import { fetchPublishedHistory } from "./history-source.mjs";
+import { fetchPublishedHistory, resolveRepository } from "./history-source.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const argument = (flag, fallback) => {
@@ -26,9 +26,7 @@ const catalogOnly = process.argv.includes("--catalog-only");
 const manifestFile = argument("--manifest");
 const manifest = manifestFile
   ? validatePublishedHistory(JSON.parse(await readFile(manifestFile, "utf8")))
-  : await fetchPublishedHistory(
-      JSON.parse(await readFile(join(root, "history-source.json"), "utf8")),
-    );
+  : await fetchPublishedHistory(resolveRepository({ cwd: root }));
 const cache = join(root, ".cache", "history-releases");
 async function fetchArchive(asset) {
   const parts = new URL(asset.url).pathname.split("/");

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import {
   mkdtemp,
   mkdir,
@@ -13,6 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { gzipSync } from "node:zlib";
+import { fileURLToPath } from "node:url";
 import {
   assembleMonthlyHistory,
   historyMonth,
@@ -84,6 +86,43 @@ test("monthly packages are standalone, deterministic, and reconstruct the exact 
       owner: "example",
       snapshotDate: "2024-03-01",
     });
+    // Exercise the actual Action packing entry point without a source config
+    // file, and ensure a fork publishes URLs under its own repository.
+    const cliOutput = join(directory, "cli-packages");
+    execFileSync(
+      process.execPath,
+      [
+        fileURLToPath(
+          new URL("../scripts/pack-public-history.mjs", import.meta.url),
+        ),
+        "--source",
+        source,
+        "--output",
+        cliOutput,
+      ],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          GITHUB_ACTIONS: "true",
+          GITHUB_REPOSITORY: "fork-owner/my-studio",
+          VERCEL: "",
+          VERCEL_GIT_REPO_OWNER: "",
+          VERCEL_GIT_REPO_SLUG: "",
+        },
+      },
+    );
+    const cliManifest = JSON.parse(
+      await readFile(join(cliOutput, "published-history.json"), "utf8"),
+    );
+    assert.equal(cliManifest.runCount, 3);
+    assert.ok(
+      [cliManifest.catalog, ...cliManifest.months].every((asset) =>
+        asset.url.startsWith(
+          "https://github.com/fork-owner/my-studio/releases/download/footpath-",
+        ),
+      ),
+    );
     assert.deepEqual(
       manifest.months.map(({ month, runCount }) => [month, runCount]),
       [

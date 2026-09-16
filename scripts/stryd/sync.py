@@ -206,7 +206,7 @@ def main():
         f'- Pending processing: {result["pending"]}; remaining checks: {result["remaining"]}; failures: {len(result["failed"])}.',
         f'- Monthly Release: {result["release"] or "No data change."}',
         f'- Website: {result["deployment"]}. No commits or pull requests created.',
-        '- Schedule: daily at 06:20 Asia/Shanghai (22:20 UTC).', '']
+        '- Schedule: daily at 03:30 Asia/Shanghai (19:30 UTC).', '']
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         Path(os.environ['GITHUB_STEP_SUMMARY']).write_text('\n'.join(summary))
     for failure in result['failed']:
