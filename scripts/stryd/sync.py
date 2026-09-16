@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch authorized Stryd uploads; publish immutable monthly assets via a data PR."""
+"""Fetch authorized Stryd uploads; update monthly Releases without changing Git."""
 import datetime as dt
 import gzip
 import json
@@ -11,17 +11,15 @@ import shutil
 import subprocess
 import sys
 import time
-import uuid
 
-from auth import AUTH_TAG, StateStore
+from auth import StateStore
 from client import Stryd, SyncError, UTC, numeric_id
 from github import GitHub
+from publication import latest_manifest, publish, deploy_site
 from transform import FIELDS, SITE_FORMAT, TRANSFORM_VERSION, compact, compress, digest, median, pack_run, store_data
 
 ROOT = Path(__file__).resolve().parents[2]
 WORK = ROOT / '.cache/stryd-sync'
-BRANCH = 'sync/footpath-data'
-MANIFEST = 'published-history.json'
 ACTIVITY_FIELDS = ('id', 'name', 'timestamp', 'foot_data_id', 'moving_time', 'distance',
                    'average_speed', 'surface_type', 'recording_mode', 'apparel_ids')
 
@@ -118,37 +116,10 @@ def synchronize(stryd, state, history, directory, maximum=100, recheck_all=False
 
 def node(*args):
     # Build/pack subprocesses have no need to see account credentials.
-    env = {k: v for k, v in os.environ.items() if k not in ('STRYD_AUTH_KEY', 'GH_TOKEN', 'GITHUB_TOKEN')}
+    env = {k: v for k, v in os.environ.items() if k not in ('STRYD_AUTH_KEY', 'GH_TOKEN', 'GITHUB_TOKEN', 'VERCEL_DEPLOY_HOOK')}
     result = subprocess.run(['node', *args], cwd=ROOT, env=env)
     if result.returncode:
         raise SyncError('History verification or packaging failed')
-
-
-def pending_pull(github):
-    pulls = github.call('GET', '/pulls?state=open&base=main&head=' + github.repo.split('/')[0] + ':' + BRANCH)
-    if len(pulls) > 1:
-        raise SyncError('Multiple data update PRs exist')
-    if not pulls:
-        return None
-    pull = pulls[0]
-    if pull['head']['repo']['full_name'] != github.repo or pull['base']['ref'] != 'main':
-        raise SyncError('Unexpected data PR repository or base')
-    files = list(github.pages(f'/pulls/{pull["number"]}/files'))
-    if not files or any(f['filename'] != MANIFEST for f in files):
-        raise SyncError('Data PR contains source changes; review it before syncing again')
-    comparison = github.call('GET', '/compare/main...' + pull['head']['sha'])
-    original = github.read_file(MANIFEST, comparison['merge_base_commit']['sha'])
-    approved = github.read_file(MANIFEST, 'main')
-    if json.loads(original) != json.loads(approved):
-        raise SyncError('Approved history changed while the data PR was open; reconcile the PR before syncing')
-    return pull
-
-
-def validate_baseline(manifest, repo):
-    assets = [manifest.get('catalog', {}), *manifest.get('months', [])]
-    prefix = f'https://github.com/{repo}/releases/download/history-'
-    if not assets or any(not a.get('url', '').startswith(prefix) for a in assets):
-        raise SyncError('Data manifest must reference public history assets in this repository')
 
 
 def apply_updates(directory, updates):
@@ -162,74 +133,11 @@ def apply_updates(directory, updates):
             file.unlink()
 
 
-def publish(github, manifest, tag, commit):
-    if not re.fullmatch(r'history-\d{4}-\d{2}-\d{2}-sync-[a-zA-Z0-9.-]+', tag) or tag == AUTH_TAG:
-        raise SyncError('Invalid public data Release tag')
-    directory = ROOT / '.cache/history-releases' / tag
-    assets = [a for a in [manifest['catalog'], *manifest['months']] if f'/download/{tag}/' in a['url']]
-    filenames = [Path(a['url']).name for a in assets] + [MANIFEST]
-    if any(not re.fullmatch(r'(?:footpath-(?:catalog|\d{4}-\d{2})\.tar|published-history\.json)', f) for f in filenames):
-        raise SyncError('Unexpected file in public data publication')
-    release = github.call('POST', '/releases', {'tag_name': tag, 'target_commitish': commit,
-        'name': 'Footpath history ' + manifest['snapshotDate'], 'draft': True,
-        'body': f'{manifest["runCount"]} runs across {len(manifest["months"])} months. '
-                'Unchanged months reuse immutable assets from earlier releases. '
-                'The website updates after the data PR is reviewed and merged.'}, allowed=(201,))
-    for name in filenames:
-        github.upload(release['id'], name, (directory / name).read_bytes())
-    # Only this newly created history Release can be published. The credential
-    # draft has a different fixed tag and ID and is never passed to this path.
-    if release['tag_name'] != tag or release['id'] == int(os.environ['STRYD_STATE_RELEASE_ID']):
-        raise SyncError('Refusing to publish an unexpected release')
-    github.call('PATCH', f'/releases/{release["id"]}', {'draft': False, 'make_latest': 'false'})
-    return release['html_url']
-
-
-def update_pull(github, manifest, expected_pull, result, release_url, expected_main=None):
-    current = pending_pull(github)
-    if (current or {}).get('head', {}).get('sha') != (expected_pull or {}).get('head', {}).get('sha'):
-        raise SyncError('Data PR changed during sync; retry to avoid overwriting it')
-    main = github.call('GET', '/git/ref/heads/main')['object']['sha']
-    if expected_main and main != expected_main:
-        raise SyncError('Main changed during sync; retry before updating the data PR')
-    base = github.call('GET', '/git/commits/' + main)
-    tree = github.call('POST', '/git/trees', {'base_tree': base['tree']['sha'], 'tree': [{
-        'path': MANIFEST, 'mode': '100644', 'type': 'blob', 'content': json.dumps(manifest, indent=2) + '\n'}]}, allowed=(201,))
-    parents = [main]
-    branch = github.request('GET', '/git/ref/heads/' + BRANCH)
-    if branch.status == 200:
-        old_head = json.loads(branch.body)['object']['sha']
-        if current and old_head != current['head']['sha']:
-            raise SyncError('Data branch changed during sync')
-        if not current:
-            # A merged or deliberately closed data PR must not be silently reopened.
-            closed = github.call('GET', '/pulls?state=closed&base=main&head=' + github.repo.split('/')[0] + ':' + BRANCH)
-            if not closed or not closed[0].get('merged_at'):
-                raise SyncError('Existing data branch has no merged PR; resolve it before syncing')
-        parents = list(dict.fromkeys([old_head, main]))
-    elif branch.status != 404:
-        raise SyncError('Cannot inspect data branch')
-    commit = github.call('POST', '/git/commits', {'message': f'data: sync {manifest["runCount"]} Footpath runs',
-        'tree': tree['sha'], 'parents': parents}, allowed=(201,))
-    if branch.status == 404:
-        github.call('POST', '/git/refs', {'ref': 'refs/heads/' + BRANCH, 'sha': commit['sha']}, allowed=(201,))
-    else:
-        github.call('PATCH', '/git/refs/heads/' + BRANCH, {'sha': commit['sha'], 'force': False})
-    body = '\n'.join(['## Daily Stryd data update', '',
-        f'- Total: {manifest["runCount"]} runs across {len(manifest["months"])} months.',
-        f'- This sync: {result["new"]} new, {result["revised"]} revised; {result["pending"]} still processing.',
-        f'- Immutable data assets: {release_url}',
-        '- Unchanged month packages retain their existing URLs and checksums.',
-        '- Only the public data manifest changes; account credentials are excluded.', '',
-        'Review this PR and its Vercel Preview before merging. Production remains on the approved main snapshot.'])
-    fields = {'title': f'data: update Footpath history ({manifest["runCount"]} runs)', 'body': body}
-    if current:
-        pull = github.call('PATCH', f'/pulls/{current["number"]}', fields)
-    else:
-        pull = github.call('POST', '/pulls', {**fields, 'head': BRANCH, 'base': 'main'}, allowed=(201,))
-    # Explicit dispatch works with GITHUB_TOKEN, without a long-lived GitHub PAT.
-    github.call('POST', '/actions/workflows/ci.yml/dispatches', {'ref': BRANCH}, allowed=(204,))
-    return pull['html_url']
+def require_current_main(github, expected):
+    if not re.fullmatch(r'[a-f0-9]{40}', expected or ''):
+        raise SyncError('Cannot determine the checked-out workflow revision')
+    if github.call('GET', '/git/ref/heads/main')['object']['sha'] != expected:
+        raise SyncError('Main changed during sync; rerun using the current main revision')
 
 
 def main():
@@ -239,6 +147,9 @@ def main():
     if not 1 <= maximum <= 500:
         raise SyncError('MAX_DOWNLOADS must be between 1 and 500')
     github = GitHub(os.environ.get('GITHUB_REPOSITORY'), os.environ.get('GH_TOKEN'))
+    checkout = os.environ.get('GITHUB_SHA') or subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+    check_main = lambda: require_current_main(github, checkout)
+    check_main()
     store = StateStore(github, os.environ.get('STRYD_STATE_RELEASE_ID'), os.environ.get('STRYD_AUTH_KEY'))
     state = store.load()
     def persist(session):
@@ -247,10 +158,7 @@ def main():
     stryd = Stryd(state['session'], persist)
     if os.environ.get('REFRESH_SESSION') == 'true':
         stryd.refresh()
-    pull = pending_pull(github)
-    main_sha = github.call('GET', '/git/ref/heads/main')['object']['sha']
-    baseline = json.loads(github.read_file(MANIFEST, pull['head']['sha'] if pull else main_sha))
-    validate_baseline(baseline, github.repo)
+    baseline = latest_manifest(github)
     shutil.rmtree(WORK, ignore_errors=True)
     WORK.mkdir(parents=True)
     baseline_file = WORK / 'baseline.json'
@@ -268,15 +176,22 @@ def main():
         history = WORK / 'history'
         node('scripts/fetch-public-history.mjs', '--manifest', str(baseline_file), '--target', str(history))
         apply_updates(history / 'data', updates)
-        snapshot = dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).strftime('%Y-%m-%d')
-        tag = f'history-{snapshot}-sync-' + os.environ.get('GITHUB_RUN_ID', 'local') + '-' + uuid.uuid4().hex[:8]
-        (ROOT / MANIFEST).write_text(json.dumps(baseline, indent=2) + '\n')
-        node('scripts/pack-public-history.mjs', str(history), tag, snapshot, '--reuse')
-        manifest = json.loads((ROOT / MANIFEST).read_text())
-        release_url = publish(github, manifest, tag, main_sha)
-        result['pull_request'] = update_pull(github, manifest, pull, result, release_url, main_sha)
+        output = WORK / 'publication'
+        node('scripts/pack-public-history.mjs', '--source', str(history), '--output', str(output))
+        manifest = json.loads((output / 'published-history.json').read_text())
+        check_main()
+        result['release'] = publish(github, manifest, output, checkout, before_discovery=check_main)
+        baseline = manifest
     else:
-        result['pull_request'] = pull['html_url'] if pull else None
+        result['release'] = None
+    deployment_failed = False
+    try:
+        check_main()
+        result['deployment'] = deploy_site(baseline['revision'], os.environ.get('VERCEL_DEPLOY_HOOK'),
+            os.environ.get('STRYD_SITE_URL'), force=os.environ.get('DEPLOY_SITE') == 'true')
+    except SyncError as error:
+        deployment_failed = True
+        result['deployment'] = str(error)
     safe = {k: v for k, v in result.items() if k != 'failed'}
     print(json.dumps(safe))
     summary = ['## Daily Stryd Footpath sync', '',
@@ -284,13 +199,14 @@ def main():
         f'- New / revised / unchanged: {result["new"]} / {result["revised"]} / {result["unchanged"]}.',
         f'- Archived total: {result["total"]}; not archived: {result["not_archived"]}.',
         f'- Pending processing: {result["pending"]}; remaining checks: {result["remaining"]}; failures: {len(result["failed"])}.',
-        f'- Data PR: {result["pull_request"] or "No data change; no PR or Release created."}',
+        f'- Monthly Release: {result["release"] or "No data change."}',
+        f'- Website: {result["deployment"]}. No commits or pull requests created.',
         '- Schedule: daily at 06:20 Asia/Shanghai (22:20 UTC).', '']
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         Path(os.environ['GITHUB_STEP_SUMMARY']).write_text('\n'.join(summary))
     for failure in result['failed']:
         print('Activity', failure['activity'] + ':', failure['reason'], file=sys.stderr)
-    return 1 if result['failed'] else 0
+    return 1 if result['failed'] or deployment_failed else 0
 
 
 if __name__ == '__main__':

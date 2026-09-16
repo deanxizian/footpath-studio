@@ -1,5 +1,5 @@
 import { createWriteStream } from "node:fs";
-import { mkdir, readFile, rename, rm, stat } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { resolve, join } from "node:path";
@@ -12,6 +12,7 @@ import {
   assembleMonthlyHistory,
   validatePublishedHistory,
 } from "./monthly-history.mjs";
+import { fetchPublishedHistory } from "./history-source.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const argument = (flag, fallback) => {
@@ -22,14 +23,12 @@ const argument = (flag, fallback) => {
   return resolve(root, process.argv[i + 1]);
 };
 const catalogOnly = process.argv.includes("--catalog-only");
-const manifest = validatePublishedHistory(
-  JSON.parse(
-    await readFile(
-      argument("--manifest", join(root, "published-history.json")),
-      "utf8",
-    ),
-  ),
-);
+const manifestFile = argument("--manifest");
+const manifest = manifestFile
+  ? validatePublishedHistory(JSON.parse(await readFile(manifestFile, "utf8")))
+  : await fetchPublishedHistory(
+      JSON.parse(await readFile(join(root, "history-source.json"), "utf8")),
+    );
 const cache = join(root, ".cache", "history-releases");
 async function fetchArchive(asset) {
   const parts = new URL(asset.url).pathname.split("/");
@@ -99,6 +98,11 @@ try {
     )
       throw new Error("Catalog and manifest disagree");
   } else await assembleMonthlyHistory(manifest, archives, target);
+  await mkdir(join(root, ".cache"), { recursive: true });
+  await writeFile(
+    join(root, ".cache/published-history.json"),
+    JSON.stringify(manifest, null, 2) + "\n",
+  );
   console.log(
     catalogOnly
       ? `Catalog verified: ${manifest.runCount} runs in ${manifest.months.length} months.`

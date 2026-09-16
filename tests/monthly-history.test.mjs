@@ -79,8 +79,7 @@ test("monthly packages are standalone, deterministic, and reconstruct the exact 
       }),
     );
     const output = join(directory, "packages");
-    const release =
-      "https://github.com/example/footpath-studio/releases/download/history-test";
+    const release = "https://github.com/example/footpath-studio";
     const manifest = await packMonthlyHistory(source, output, release, {
       owner: "example",
       snapshotDate: "2024-03-01",
@@ -95,7 +94,7 @@ test("monthly packages are standalone, deterministic, and reconstruct the exact 
     const standalone = join(directory, "standalone");
     await mkdir(standalone);
     extractHistoryArchive(
-      join(output, "footpath-2024-02.tar"),
+      join(output, "footpath-2024-02", basename(manifest.months[1].url)),
       standalone,
       manifest.months[1].fileCount,
     );
@@ -118,23 +117,38 @@ test("monthly packages are standalone, deterministic, and reconstruct the exact 
     );
     assert.deepEqual(repacked, manifest);
     const reusedOutput = join(directory, "reused");
-    const reused = await packMonthlyHistory(
-      source,
-      reusedOutput,
-      release + "-next",
-      {
-        owner: "example",
-        snapshotDate: "2024-03-02",
-        previous: manifest,
-      },
-    );
+    const reused = await packMonthlyHistory(source, reusedOutput, release, {
+      owner: "example",
+      snapshotDate: "2024-03-02",
+    });
     assert.deepEqual(reused.months, manifest.months);
-    assert.deepEqual(await readdir(reusedOutput), ["footpath-catalog.tar"]);
-    assert.match(reused.catalog.url, /history-test-next/);
+    // A fresh publication directory must retain every unchanged archive so
+    // the publisher can repair remote upload damage without a previous cache.
+    for (const asset of [reused.catalog, ...reused.months]) {
+      const tag = new URL(asset.url).pathname.split("/").at(-2);
+      const bytes = await readFile(
+        join(reusedOutput, tag, basename(asset.url)),
+      );
+      assert.equal(bytes.length, asset.bytes);
+      assert.equal(hash(bytes), asset.sha256);
+      assert.deepEqual(
+        bytes,
+        await readFile(join(output, tag, basename(asset.url))),
+      );
+    }
+    assert.equal(reused.catalog.url, manifest.catalog.url);
+    assert.match(
+      manifest.months[0].url,
+      /download\/footpath-2024-01\/footpath-2024-01-[a-f0-9]{64}\.tar$/,
+    );
     const archives = new Map(
       [manifest.catalog, ...manifest.months].map((asset) => [
         asset.url,
-        join(output, basename(asset.url)),
+        join(
+          output,
+          new URL(asset.url).pathname.split("/").at(-2),
+          basename(asset.url),
+        ),
       ]),
     );
     const assembled = join(directory, "assembled");

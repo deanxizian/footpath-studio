@@ -27,4 +27,4 @@
 
 发布格式使用 `data/version.json` 指向 gzip 压缩的索引。所有 `.bin` 文件以压缩字节的 SHA-256 命名，索引包含逐次统计行与几何文件地址。浏览器校验摘要后才解压，几何文件按需加载，最多缓存 3 次网络加载的跑步。
 
-Release 使用 `footpath-YYYY-MM.tar` 分月分发。每个月包都包含上述完整目录结构，只引用北京时间当月开始的活动。总索引包 `footpath-catalog.tar` 保留完整历史的索引；构建脚本校验各个月包与总索引一致后，汇总三维文件，继续提供相同的网页数据格式。`published-history.json` 的格式标识为 `footpath-studio-monthly-history-v1`，记录 `Asia/Shanghai` 时区和每个附件的摘要。
+每月一个 `footpath-YYYY-MM` Release，通过 `footpath-YYYY-MM-<摘要>.tar` 分发数据。每个月包都包含上述完整目录结构，只引用北京时间当月开始的活动。最新月份的总索引包 `footpath-catalog-<摘要>.tar` 保留完整历史的索引；构建脚本校验各个月包与总索引一致后，汇总三维文件，继续提供相同的网页数据格式。Release 中的 `published-history.json` 格式标识为 `footpath-studio-monthly-history-v2`，记录 `Asia/Shanghai` 时区、`latestMonth` 和每个附件的摘要；源码不保存动态数据清单。
