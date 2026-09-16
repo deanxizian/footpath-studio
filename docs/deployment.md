@@ -8,7 +8,15 @@
 | `pnpm build:history` | `published-history.json` 固定的公开 Release | 维护者的公开历史站 |
 | `pnpm dev:archive` | 本机 `private-data/data/` | 有本地历史快照的开发环境 |
 
-历史构建流式下载约 1 GB 数据，验证大小和 SHA-256，再检查归档路径、文件类型、每个数据文件摘要及索引引用关系。失败即停止构建，不回退到旧数据。已校验的压缩包缓存在 `.cache/`；此目录不进入源码。
+历史数据按 `Asia/Shanghai` 时区的跑步开始日期分月，跨午夜或跨月的一次跑步整体归入开始月份。Release 中包括：
+
+- `footpath-YYYY-MM.tar`：当月独立的 `data/version.json`、压缩索引和全部被引用的三维轨迹。
+- `footpath-catalog.tar`：网站使用的原始总索引与版本文件。
+- `published-history.json`：月份、跑步数、附件 URL、大小和 SHA-256，源码中保留同一份清单。
+
+历史构建最多同时流式下载 4 个包，验证大小和 SHA-256，再检查归档路径、文件类型、每个数据文件摘要、月份及索引引用关系。每个月的活动必须与总索引完全一致；汇总后再次校验全部记录。失败即停止构建，不回退到旧数据。网站的浏览器加载格式不变。
+
+已校验的归档缓存在 `.cache/history-releases/<tag>/`，再次构建只下载缺失或校验失败的包。归档使用固定 USTAR 元数据，不带 macOS 辅助文件；本地文件时间变化不会改变归档内容。缓存不进入源码。
 
 ## Vercel
 
@@ -21,8 +29,10 @@
 本项目不连接 Stryd 账号。旧自动抓取仓库已删除，历史快照不会自行增加。要接入新的抓取流程，必须另行设计凭据存储及刷新机制，不能把会话放入公开 Git 历史。
 
 1. 从有授权的数据源准备 `private-data/data/` 下的 `version.json` 和全部被索引引用的 `.bin`。
-2. 在功能分支修改 `published-history.json` 中的版本 URL 和日期，然后运行 `pnpm pack:history`。命令生成 `.cache/footpath-history.tar`，更新文件大小、校验值与数量。
-3. 复核公开范围后，将归档上传到 URL 所对应的 GitHub Release。不要覆盖已有版本，使用新标签。
-4. 执行 `pnpm build:history` 并检查页面；将小型 manifest 的修改作为 PR 提交。审核合并后 Vercel 构建新快照。
+2. 在功能分支运行 `pnpm pack:history private-data history-YYYY-MM-DD-monthly YYYY-MM-DD`，传入新的 Release 标签和快照日期。命令生成 `.cache/history-releases/<tag>/` 下的月包、总索引包和清单，同时更新源码中的 `published-history.json`。
+3. 复核公开范围后，将该目录内的附件上传到对应的 GitHub Release。先完成上传和校验，再发布 Release。不要覆盖已有版本，使用新标签；旧快照保留，保证旧提交仍可构建。
+4. 执行 `pnpm build:history` 并检查页面；将打包代码或清单修改作为 PR 提交。CI 和代码审查完成、Preview 验证通过后合并，由 Vercel 构建新快照。
+
+只分析某个月时，可以单独下载对应月包，解包后得到同样的公开 `data/` 格式。月份包不是“导入 JSON”按钮接受的原始 JSON 文件。需要完整网站数据时使用 `pnpm build:history`，不要把多个月包直接解压到同一目录覆盖各自的 `version.json`。
 
 GitHub Release 可用于分发独立附件，当前归档低于单附件 2 GiB 上限，见 [GitHub Releases 文档](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases)。

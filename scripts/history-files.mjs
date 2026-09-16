@@ -12,6 +12,33 @@ export async function sha256(path) {
   return hash.digest("hex");
 }
 
+export async function readHistoryIndex(directory) {
+  const version = JSON.parse(
+    await readFile(join(directory, "version.json"), "utf8"),
+  );
+  if (
+    version.format !== "footpath-studio-public-v1" ||
+    !/^[a-f0-9]{64}\.bin$/.test(version.index)
+  )
+    throw new Error("Unsupported history version");
+  if (
+    (await sha256(join(directory, version.index))) !==
+    version.index.slice(0, -4)
+  )
+    throw new Error("History index checksum mismatch");
+  const history = JSON.parse(
+    gunzipSync(await readFile(join(directory, version.index)), {
+      maxOutputLength: 256 * 1024 * 1024,
+    }),
+  );
+  if (
+    history.format !== "footpath-studio-collection-v1" ||
+    !history.runs?.length
+  )
+    throw new Error("Invalid history collection");
+  return { version, history };
+}
+
 export async function verifyHistory(directory, expected = {}) {
   const files = (await readdir(directory)).sort();
   if (!files.length || files.some((file) => !DATA_FILE.test(file)))
@@ -25,24 +52,7 @@ export async function verifyHistory(directory, expected = {}) {
     )
       throw new Error(`History checksum mismatch: ${file}`);
   }
-  const version = JSON.parse(
-    await readFile(join(directory, "version.json"), "utf8"),
-  );
-  if (
-    version.format !== "footpath-studio-public-v1" ||
-    !/^[a-f0-9]{64}\.bin$/.test(version.index)
-  )
-    throw new Error("Unsupported history version");
-  const history = JSON.parse(
-    gunzipSync(await readFile(join(directory, version.index)), {
-      maxOutputLength: 256 * 1024 * 1024,
-    }),
-  );
-  if (
-    history.format !== "footpath-studio-collection-v1" ||
-    !history.runs?.length
-  )
-    throw new Error("Invalid history collection");
+  const { version, history } = await readHistoryIndex(directory);
   const referenced = new Set(["version.json", version.index]);
   for (const run of history.runs) {
     if (!/^\/data\/[a-f0-9]{64}\.bin$/.test(run.packedUrl))
@@ -65,6 +75,8 @@ export async function verifyHistory(directory, expected = {}) {
     runCount: history.runs.length,
     fileCount: files.length,
     revision: version.revision,
+    index: version.index,
+    history,
   };
 }
 
