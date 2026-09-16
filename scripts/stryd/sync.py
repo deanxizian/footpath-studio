@@ -133,6 +133,13 @@ def apply_updates(directory, updates):
             file.unlink()
 
 
+def require_current_main(github, expected):
+    if not re.fullmatch(r'[a-f0-9]{40}', expected or ''):
+        raise SyncError('Cannot determine the checked-out workflow revision')
+    if github.call('GET', '/git/ref/heads/main')['object']['sha'] != expected:
+        raise SyncError('Main changed during sync; rerun using the current main revision')
+
+
 def main():
     if os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('GITHUB_REF') != 'refs/heads/main':
         raise SyncError('Stryd credentials may only be used by the main branch')
@@ -140,6 +147,9 @@ def main():
     if not 1 <= maximum <= 500:
         raise SyncError('MAX_DOWNLOADS must be between 1 and 500')
     github = GitHub(os.environ.get('GITHUB_REPOSITORY'), os.environ.get('GH_TOKEN'))
+    checkout = os.environ.get('GITHUB_SHA') or subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+    check_main = lambda: require_current_main(github, checkout)
+    check_main()
     store = StateStore(github, os.environ.get('STRYD_STATE_RELEASE_ID'), os.environ.get('STRYD_AUTH_KEY'))
     state = store.load()
     def persist(session):
@@ -169,13 +179,14 @@ def main():
         output = WORK / 'publication'
         node('scripts/pack-public-history.mjs', '--source', str(history), '--output', str(output), '--previous', str(baseline_file))
         manifest = json.loads((output / 'published-history.json').read_text())
-        main_sha = github.call('GET', '/git/ref/heads/main')['object']['sha']
-        result['release'] = publish(github, manifest, output, main_sha)
+        check_main()
+        result['release'] = publish(github, manifest, output, checkout, before_discovery=check_main)
         baseline = manifest
     else:
         result['release'] = None
     deployment_failed = False
     try:
+        check_main()
         result['deployment'] = deploy_site(baseline['revision'], os.environ.get('VERCEL_DEPLOY_HOOK'),
             os.environ.get('STRYD_SITE_URL'), force=os.environ.get('DEPLOY_SITE') == 'true')
     except SyncError as error:

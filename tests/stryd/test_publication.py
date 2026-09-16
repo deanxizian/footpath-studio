@@ -9,6 +9,8 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts/stryd'))
 from client import Reply, SyncError
 from publication import MANIFEST, deploy_site, latest_manifest, publish, replace_manifest, validate_baseline
+from github import GitHub
+from sync import require_current_main
 
 
 def sha(data):
@@ -46,14 +48,17 @@ class ReleaseOnlyGit:
                 self.latest = identifier
             return self.releases[identifier]
         return self.releases[identifier]
-    def upload(self, release_id, name, content, content_type=None):
+    def upload(self, release_id, name, content, content_type=None, repair=False):
         if self.fail_upload == name:
             self.fail_upload = None
             raise SyncError('upload failed')
         found = next((a for a in self.pages(f'/releases/{release_id}/assets') if a['name'] == name), None)
         if found:
-            assert self.data[found['id']] == content
-            return found
+            if found['state'] == 'uploaded' and found['size'] == len(content) and found['digest'] == 'sha256:' + sha(content):
+                assert self.data[found['id']] == content
+                return found
+            assert repair
+            self.call('DELETE', f'/releases/assets/{found["id"]}')
         identifier = max(self.assets, default=0) + 1
         asset = dict(id=identifier, release_id=release_id, name=name, size=len(content),
                      digest='sha256:' + sha(content), state='uploaded')
@@ -128,6 +133,32 @@ class PublicationTests(unittest.TestCase):
         self.github.call('DELETE', f'/releases/assets/{alias["id"]}')
         self.assertEqual(latest_manifest(self.github), first)
         self.assertTrue(any(a['name'] == MANIFEST for a in self.github.assets.values()))
+    def test_incomplete_and_mismatched_month_uploads_are_repaired(self):
+        manifest = self.fixture(['2026-09'])
+        publish(self.github, manifest, self.directory, 'main')
+        month_name = Path(manifest['months'][0]['url']).name
+        for field, value in [('state', 'starter'), ('digest', 'sha256:' + '0' * 64), ('size', 1)]:
+            item = next(a for a in self.github.assets.values() if a['name'] == month_name)
+            item[field] = value
+            publish(self.github, manifest, self.directory, 'main')
+            repaired = next(a for a in self.github.assets.values() if a['name'] == month_name)
+            self.assertEqual(repaired['state'], 'uploaded')
+            self.assertEqual(repaired['digest'], 'sha256:' + manifest['months'][0]['sha256'])
+            self.assertEqual(repaired['size'], manifest['months'][0]['bytes'])
+            self.assertEqual(len(self.github.releases), 1)
+        alias = next(a for a in self.github.assets.values() if a['name'] == MANIFEST)
+        alias['state'] = 'starter'
+        self.assertEqual(latest_manifest(self.github), manifest)
+        self.assertTrue(all(a['state'] == 'uploaded' for a in self.github.assets.values()))
+    def test_main_change_before_discovery_keeps_last_complete_manifest(self):
+        old = self.fixture(['2026-09'])
+        publish(self.github, old, self.directory, 'main')
+        new = self.fixture(['2026-09'], 'updated')
+        def changed():
+            raise SyncError('Main changed during sync')
+        with self.assertRaisesRegex(SyncError, 'Main changed'):
+            publish(self.github, new, self.directory, 'old-main', before_discovery=changed)
+        self.assertEqual(latest_manifest(self.github), old)
     def test_credentials_and_cross_repository_urls_cannot_be_published(self):
         manifest = self.fixture(['2026-09'])
         for url in ['https://github.com/owner/repo/releases/download/stryd-sync-state/state.enc.json',
@@ -137,6 +168,34 @@ class PublicationTests(unittest.TestCase):
             with self.assertRaises(SyncError):
                 publish(self.github, invalid, self.directory, 'main')
         self.assertEqual(self.github.calls, [])
+
+
+class UploadRecoveryTests(unittest.TestCase):
+    def test_upload_retries_incomplete_asset_without_touching_valid_assets(self):
+        content = b'verified replacement'
+        good = dict(id=2, name='month.tar', size=len(content), digest='sha256:' + sha(content), state='uploaded')
+        bad = dict(id=1, name='month.tar', size=0, digest=None, state='starter')
+        class HTTP:
+            def __init__(self, values):
+                self.values, self.calls = values, []
+            def request(self, method, url, *args, **kwargs):
+                self.calls.append((method, url))
+                return self.values.pop(0)
+        http = HTTP([Reply(200, json.dumps([bad]).encode(), {}), Reply(204, b'', {}), Reply(201, json.dumps(good).encode(), {})])
+        self.assertEqual(GitHub('owner/repo', 'fake-token', http).upload(1, 'month.tar', content, repair=True), good)
+        self.assertEqual([c[0] for c in http.calls], ['GET', 'DELETE', 'POST'])
+        http = HTTP([Reply(200, json.dumps([good]).encode(), {})])
+        self.assertEqual(GitHub('owner/repo', 'fake-token', http).upload(1, 'month.tar', content, repair=True), good)
+        self.assertEqual([c[0] for c in http.calls], ['GET'])
+    def test_main_revision_guard(self):
+        class Git:
+            def call(self, method, path):
+                return {'object': {'sha': 'b' * 40}}
+        require_current_main(Git(), 'b' * 40)
+        with self.assertRaisesRegex(SyncError, 'Main changed'):
+            require_current_main(Git(), 'a' * 40)
+        with self.assertRaisesRegex(SyncError, 'checked-out'):
+            require_current_main(Git(), None)
 
 
 class DeploymentTests(unittest.TestCase):

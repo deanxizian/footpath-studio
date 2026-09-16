@@ -35,13 +35,13 @@ def validate_baseline(manifest, repo):
 def replace_manifest(github, release_id, content):
     """Replace the discovery alias only after a durable immutable copy exists."""
     existing = next((a for a in github.pages(f'/releases/{release_id}/assets') if a['name'] == MANIFEST), None)
-    previous = github.asset(existing['id']) if existing else None
+    previous = github.asset(existing['id']) if existing and existing.get('state') == 'uploaded' else None
     if previous == content:
         return
     if existing:
         github.call('DELETE', f'/releases/assets/{existing["id"]}', allowed=(204,))
     try:
-        uploaded = github.upload(release_id, MANIFEST, content, 'application/json')
+        uploaded = github.upload(release_id, MANIFEST, content, 'application/json', repair=True)
         if github.asset(uploaded['id']) != content:
             raise SyncError('Public discovery manifest readback failed')
     except Exception:
@@ -72,7 +72,7 @@ def latest_manifest(github):
     return manifest
 
 
-def publish(github, manifest, directory, commit):
+def publish(github, manifest, directory, commit, before_discovery=lambda: None):
     validate_baseline(manifest, github.repo)
     releases = {r['tag_name']: r for r in github.pages('/releases')}
     public = {}
@@ -92,13 +92,14 @@ def publish(github, manifest, directory, commit):
         for asset in assets:
             name = Path(asset['url']).name
             uploaded = remote.get(name)
-            if uploaded is None:
+            matches = lambda value: value and value.get('state') == 'uploaded' and value.get('digest') == 'sha256:' + asset['sha256'] and value.get('size') == asset['bytes']
+            if not matches(uploaded):
                 path = directory / tag / name
                 content = path.read_bytes()
                 if len(content) != asset['bytes'] or hashlib.sha256(content).hexdigest() != asset['sha256']:
                     raise SyncError('Local monthly archive checksum failed')
-                uploaded = github.upload(release['id'], name, content)
-            if uploaded.get('state') != 'uploaded' or uploaded.get('digest') != 'sha256:' + asset['sha256'] or uploaded.get('size') != asset['bytes']:
+                uploaded = github.upload(release['id'], name, content, repair=True)
+            if not matches(uploaded):
                 raise SyncError('Public monthly archive checksum failed')
         body = (f'## {month["month"]} · {month["runCount"]} 次跑步\n\n'
                 f'[下载本月最新 Footpath 数据]({month["url"]}) · {month["bytes"] / 1024 / 1024:.1f} MiB\n\n'
@@ -114,9 +115,10 @@ def publish(github, manifest, directory, commit):
         print(f'Verified monthly Release: {tag}, {month["runCount"]} runs.', flush=True)
     latest = public['footpath-' + manifest['latestMonth']]
     # Global discovery is updated last: partial uploads can never be advertised.
+    before_discovery()
     content = (json.dumps(manifest, indent=2, ensure_ascii=False) + '\n').encode()
     immutable = 'published-history-' + hashlib.sha256(content).hexdigest() + '.json'
-    github.upload(latest['id'], immutable, content, 'application/json')
+    github.upload(latest['id'], immutable, content, 'application/json', repair=True)
     replace_manifest(github, latest['id'], content)
     github.call('PATCH', f'/releases/{latest["id"]}', {'make_latest': 'true'})
     return f'https://github.com/{github.repo}/releases/tag/footpath-{manifest["latestMonth"]}'

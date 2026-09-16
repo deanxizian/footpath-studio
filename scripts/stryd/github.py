@@ -52,16 +52,19 @@ class GitHub:
             raise SyncError(f'GitHub asset read returned HTTP {reply.status}')
         return reply.body
 
-    def upload(self, release_id, name, content, content_type='application/octet-stream'):
+    def upload(self, release_id, name, content, content_type='application/octet-stream', repair=False):
         expected = 'sha256:' + hashlib.sha256(content).hexdigest()
         # A failed response may hide a successful upload. Check before retrying,
-        # and never delete or overwrite an existing asset.
+        # and preserve every valid immutable asset. Public data publishers may
+        # repair a failed upload after verifying their replacement bytes.
         for attempt in range(3):
             found = next((a for a in self.pages(f'/releases/{release_id}/assets') if a['name'] == name), None)
             if found:
                 if found.get('state') == 'uploaded' and found.get('size') == len(content) and found.get('digest') == expected:
                     return found
-                raise SyncError('Existing release asset does not match the expected bytes')
+                if not repair:
+                    raise SyncError('Existing release asset does not match the expected bytes')
+                self.call('DELETE', f'/releases/assets/{int(found["id"])}', allowed=(204,))
             try:
                 reply = self.http.request('POST', 'https://uploads.github.com' + self.prefix +
                     f'/releases/{release_id}/assets?' + urllib.parse.urlencode({'name': name}),
