@@ -2,12 +2,11 @@ import { createWriteStream } from "node:fs";
 import { mkdir, readFile, rename, rm, stat } from "node:fs/promises";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { execFileSync } from "node:child_process";
 import { resolve, join } from "node:path";
 import {
   sha256,
   verifyHistory,
-  validateArchiveEntries,
+  extractHistoryArchive,
 } from "./history-files.mjs";
 
 const root = resolve(import.meta.dirname, "..");
@@ -75,26 +74,11 @@ if (!cached) {
     await rm(partial, { force: true });
   }
 }
-const list = (flag) =>
-  execFileSync("tar", [flag, archive], {
-    encoding: "utf8",
-    maxBuffer: 4 * 1024 * 1024,
-  })
-    .trimEnd()
-    .split("\n");
-validateArchiveEntries(list("-tf"), list("-tvf"), manifest.fileCount);
 const target = join(root, "public-history");
 await rm(target, { recursive: true, force: true });
 await mkdir(target);
 try {
-  execFileSync("tar", [
-    "-xf",
-    archive,
-    "-C",
-    target,
-    "--no-same-owner",
-    "--no-same-permissions",
-  ]);
+  extractHistoryArchive(archive, target, manifest.fileCount);
   await verifyHistory(join(target, "data"), manifest);
   console.log(
     `Verified ${manifest.runCount} runs; ready for the public history build.`,

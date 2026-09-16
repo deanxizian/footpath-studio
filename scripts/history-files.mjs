@@ -3,6 +3,7 @@ import { createReadStream } from "node:fs";
 import { readdir, readFile, lstat } from "node:fs/promises";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
+import { execFileSync } from "node:child_process";
 
 export const DATA_FILE = /^(?:version\.json|[a-f0-9]{64}\.bin)$/;
 export async function sha256(path) {
@@ -68,12 +69,23 @@ export async function verifyHistory(directory, expected = {}) {
 }
 
 export function validateArchiveEntries(names, verbose, expectedCount) {
+  const dataPaths = new Set(
+    names.filter((name) =>
+      /^data\/(?:version\.json|[a-f0-9]{64}\.bin)$/.test(name),
+    ),
+  );
   if (
-    names.length !== expectedCount ||
+    dataPaths.size !== expectedCount ||
     new Set(names).size !== names.length ||
-    names.some(
-      (name) => !/^data\/(?:version\.json|[a-f0-9]{64}\.bin)$/.test(name),
-    )
+    names.some((name) => {
+      if (dataPaths.has(name)) return false;
+      // Older macOS snapshots include AppleDouble sidecars. Accept only paired
+      // metadata for an allowed data file; extraction always discards it.
+      return (
+        !/^data\/\._(?:version\.json|[a-f0-9]{64}\.bin)$/.test(name) ||
+        !dataPaths.has(name.replace("data/._", "data/"))
+      );
+    })
   )
     throw new Error("Unsafe or unexpected history archive paths");
   if (
@@ -81,4 +93,29 @@ export function validateArchiveEntries(names, verbose, expectedCount) {
     verbose.some((line) => !line.startsWith("-"))
   )
     throw new Error("History archive must contain regular files only");
+}
+
+export function extractHistoryArchive(archive, target, expectedCount) {
+  const options = {
+    encoding: "utf8",
+    maxBuffer: 4 * 1024 * 1024,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, COPYFILE_DISABLE: "1" },
+  };
+  const list = (flag) =>
+    execFileSync("tar", [flag, archive], options).trimEnd().split("\n");
+  validateArchiveEntries(list("-tf"), list("-tvf"), expectedCount);
+  execFileSync(
+    "tar",
+    [
+      "-xf",
+      archive,
+      "-C",
+      target,
+      "--no-same-owner",
+      "--no-same-permissions",
+      "--exclude=data/._*",
+    ],
+    options,
+  );
 }
