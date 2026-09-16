@@ -12,6 +12,7 @@ import { dateText, clockTime, number } from "./model.js";
 import { METRICS, MIN_SAMPLES, fmt, pct, percentChange } from "./trends.js";
 import {
   analyzeHistory,
+  targetSpeedOptions,
   historyCsv,
   loadRunData,
   longitudinalRows,
@@ -303,6 +304,10 @@ const Workbench = forwardRef(function Workbench(
     [right, setRight] = useState(true);
   const [mirror, setMirror] = useState(false);
   const [camera, setCamera] = useState({ name: "3d", revision: 0 });
+  const speedOptions = useMemo(
+    () => targetSpeedOptions(runs, target),
+    [runs, target],
+  );
   const change = (key, value) =>
     setSettings((previous) => ({ ...previous, [key]: value }));
   const key = selected && baseline ? `${selected.id}:${baseline.id}` : "";
@@ -414,9 +419,7 @@ const Workbench = forwardRef(function Workbench(
               value={target.toFixed(2)}
               onChange={(e) => change("target", Number(e.target.value))}
             >
-              {Array.from({ length: 71 }, (_, i) =>
-                (2 + i * 0.05).toFixed(2),
-              ).map((value) => (
+              {speedOptions.map((value) => (
                 <option value={value} key={value}>
                   {value} m/s ±5%
                 </option>

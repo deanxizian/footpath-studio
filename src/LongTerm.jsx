@@ -21,6 +21,7 @@ import { METRICS, MIN_SAMPLES, fmt, pct, percentChange } from "./trends.js";
 import { ShapeComparison } from "./Trends.jsx";
 import {
   analyzeHistory,
+  targetSpeedOptions,
   acrossRunComparison,
   edgeChange,
   historyCsv,
@@ -386,6 +387,10 @@ const LongTerm = forwardRef(function LongTerm(
     days,
     surface,
   } = settings;
+  const speedOptions = useMemo(
+    () => targetSpeedOptions(runs, target),
+    [runs, target],
+  );
   const change = (key, value) =>
     setSettings((previous) => ({ ...previous, [key]: value }));
   const analysis = useMemo(
@@ -479,9 +484,7 @@ const LongTerm = forwardRef(function LongTerm(
               onChange={(e) => change("target", Number(e.target.value))}
               disabled={!matched}
             >
-              {Array.from({ length: 71 }, (_, i) =>
-                (2 + i * 0.05).toFixed(2),
-              ).map((s) => (
+              {speedOptions.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
