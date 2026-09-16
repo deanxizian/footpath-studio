@@ -6,6 +6,9 @@
 /.cache/
 /public-history/
 *.log
+__pycache__/
+*.pyc
+.venv/
 .DS_Store
 
 # Local personal activity data and exports

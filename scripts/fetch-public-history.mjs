@@ -3,15 +3,32 @@ import { mkdir, readFile, rename, rm, stat } from "node:fs/promises";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { resolve, join } from "node:path";
-import { sha256 } from "./history-files.mjs";
+import {
+  sha256,
+  extractHistoryArchive,
+  readHistoryIndex,
+} from "./history-files.mjs";
 import {
   assembleMonthlyHistory,
   validatePublishedHistory,
 } from "./monthly-history.mjs";
 
 const root = resolve(import.meta.dirname, "..");
+const argument = (flag, fallback) => {
+  const i = process.argv.indexOf(flag);
+  if (i < 0) return fallback;
+  if (!process.argv[i + 1] || process.argv[i + 1].startsWith("--"))
+    throw new Error(`Missing ${flag} argument`);
+  return resolve(root, process.argv[i + 1]);
+};
+const catalogOnly = process.argv.includes("--catalog-only");
 const manifest = validatePublishedHistory(
-  JSON.parse(await readFile(join(root, "published-history.json"), "utf8")),
+  JSON.parse(
+    await readFile(
+      argument("--manifest", join(root, "published-history.json")),
+      "utf8",
+    ),
+  ),
 );
 const cache = join(root, ".cache", "history-releases");
 async function fetchArchive(asset) {
@@ -59,7 +76,7 @@ async function fetchArchive(asset) {
     await rm(partial, { force: true });
   }
 }
-const assets = [manifest.catalog, ...manifest.months];
+const assets = [manifest.catalog, ...(catalogOnly ? [] : manifest.months)];
 const archives = new Map();
 for (let i = 0; i < assets.length; i += 4) {
   const downloaded = await Promise.all(
@@ -69,12 +86,23 @@ for (let i = 0; i < assets.length; i += 4) {
   );
   for (const [url, path] of downloaded) archives.set(url, path);
 }
-const target = join(root, "public-history");
+const target = argument("--target", join(root, "public-history"));
 await rm(target, { recursive: true, force: true });
 try {
-  await assembleMonthlyHistory(manifest, archives, target);
+  if (catalogOnly) {
+    await mkdir(target, { recursive: true });
+    extractHistoryArchive(archives.get(manifest.catalog.url), target, 2);
+    const { version, history } = await readHistoryIndex(join(target, "data"));
+    if (
+      history.runs.length !== manifest.runCount ||
+      version.revision !== manifest.revision
+    )
+      throw new Error("Catalog and manifest disagree");
+  } else await assembleMonthlyHistory(manifest, archives, target);
   console.log(
-    `Verified ${manifest.runCount} runs in ${manifest.months.length} months; ready for the public history build.`,
+    catalogOnly
+      ? `Catalog verified: ${manifest.runCount} runs in ${manifest.months.length} months.`
+      : `Verified ${manifest.runCount} runs in ${manifest.months.length} months; ready for the public history build.`,
   );
 } catch (error) {
   await rm(target, { recursive: true, force: true });
