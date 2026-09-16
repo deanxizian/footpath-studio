@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { gzipSync } from "node:zlib";
+import { defaultTarget } from "../src/history-model.js";
 import {
   DATA_FILE,
   extractHistoryArchive,
@@ -189,17 +190,16 @@ export async function packMonthlyHistory(
   const months = [];
   for (const [month, runs] of groupHistoryMonths(history.runs)) {
     const speedIndex = history.rowFields?.indexOf("speed") ?? -1;
-    const speeds = runs
-      .flatMap((run) => run.rows.map((row) => row[speedIndex]))
-      .filter((value) => Number.isFinite(value) && value > 0)
-      .sort((a, b) => a - b);
+    const defaultSpeed = defaultTarget(
+      runs.map((run) => ({
+        rows: run.rows.map((row) => ({ speed: row[speedIndex] })),
+      })),
+    );
     const monthly = {
       format: history.format,
       rowFields: history.rowFields,
       transformVersion: history.transformVersion,
-      defaultSpeed: speeds.length
-        ? Math.round(speeds[Math.floor(speeds.length / 2)] * 20) / 20
-        : 3.5,
+      defaultSpeed: Number(defaultSpeed.toFixed(2)),
       runs,
     };
     const indexBytes = gzipSync(JSON.stringify(monthly));

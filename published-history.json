@@ -7,7 +7,7 @@
   "fileCount": 610,
   "revision": "03885219a6fcb0d5d67bc0953f5baadc6a961c02388ebf2c17a70a09840c1d5a",
   "catalog": {
-    "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-catalog.tar",
+    "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-catalog.tar",
     "sha256": "2c37038f421fad86a634a7640d85ed1bcb3992ce6d194a6356a8f8af61a118d8",
     "bytes": 18528256,
     "fileCount": 2
@@ -15,16 +15,16 @@
   "months": [
     {
       "month": "2023-11",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2023-11.tar",
-      "sha256": "64646d6dd72a52d5201f526c61953dc399b72e67f06ae13915d45c0e50968ad5",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2023-11.tar",
+      "sha256": "8b29524a3812e38365f3f13b435ea4124cf255186b49c28f8238cc95f02cb821",
       "bytes": 17009152,
       "fileCount": 6,
       "runCount": 4,
-      "revision": "34d532bd486cff901c4fce4e64b3a9e608c1c1b7ff7e6087c5de8fed07e55e79"
+      "revision": "778376804fc5f60b37b01c9d07e546495f19fc4365a5660e63ddd8e5cf153e81"
     },
     {
       "month": "2023-12",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2023-12.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2023-12.tar",
       "sha256": "e1f19909c47fc988a1b4267651810a5dbebfab60a82bff9b432e41b43818e096",
       "bytes": 72578048,
       "fileCount": 21,
@@ -33,7 +33,7 @@
     },
     {
       "month": "2024-01",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2024-01.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2024-01.tar",
       "sha256": "26792e614d11e91ca902f0602a7e9cf21fbf876c844f308d889261ef31595af2",
       "bytes": 48996352,
       "fileCount": 17,
@@ -42,16 +42,16 @@
     },
     {
       "month": "2024-02",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2024-02.tar",
-      "sha256": "a1159a3fae5bcc876949cb85ce581eea30a8efdd2f1ecbecaf24fd0de5068d86",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2024-02.tar",
+      "sha256": "5f114f7e167a9d85df2b0541abace236df8b8ee42834b06b2e61cfdb4a5f0037",
       "bytes": 69397504,
       "fileCount": 21,
       "runCount": 19,
-      "revision": "84ad3a27156383031739f9c8a77b586723ad567c5e6b836182154fb4951cf865"
+      "revision": "c07f7e7daf5a5fa7a3503026f719db2a395963b666ac43f163e00f2370c324c6"
     },
     {
       "month": "2024-03",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2024-03.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2024-03.tar",
       "sha256": "70c5e504a5e09370eb583ea0cb13fe76512ec219b38d5bd3fbd04967693ef408",
       "bytes": 58033152,
       "fileCount": 21,
@@ -60,7 +60,7 @@
     },
     {
       "month": "2024-04",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2024-04.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2024-04.tar",
       "sha256": "1417dd7a0cf9ae6188462928005de4447e7ff5e61aecdf1c3ea4d6b0545466c7",
       "bytes": 72199680,
       "fileCount": 24,
@@ -69,16 +69,16 @@
     },
     {
       "month": "2024-05",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2024-05.tar",
-      "sha256": "7338fa2a34b8a5810be276aca4cd17c98fbea887508380d98a1106bdfba2b998",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2024-05.tar",
+      "sha256": "4565df61bcbc2c94ccd849cfd379f15efd2a94a710797b68841db6df63b90ed1",
       "bytes": 63350272,
       "fileCount": 22,
       "runCount": 20,
-      "revision": "cddfaf589b327864e2db543c53af9bd3bde6c0ffd0415ff864e1fc561e4f75f4"
+      "revision": "c3e7964a0d61240ee41f73edb6228350192865bb6cb775d20bc2de7308bc90c8"
     },
     {
       "month": "2024-06",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2024-06.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2024-06.tar",
       "sha256": "94715d56238745857fcf261a2f2983e1e3ec3c4fdfcb6438975e81eacb207c23",
       "bytes": 18776064,
       "fileCount": 15,
@@ -87,16 +87,16 @@
     },
     {
       "month": "2024-07",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2024-07.tar",
-      "sha256": "86e5a1f2a5914dfea15b8a0ec02ebff5002152fc4044414db5119490a2ee4f5c",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2024-07.tar",
+      "sha256": "8cc8635f1b01368a561530f91aeb2f8cfe85e81d3cbf3ec401dcb22ad1321e0d",
       "bytes": 6685696,
       "fileCount": 17,
       "runCount": 15,
-      "revision": "574c67f5079de5794620a52584845a29caadee5bdd7d0f1e8142ecf7202b12f4"
+      "revision": "1d0e8e133d24aa9d22250273019ec09b91a437199adb3d0fc48478c77cfa49b6"
     },
     {
       "month": "2024-08",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2024-08.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2024-08.tar",
       "sha256": "c3a95a15335e53ce0989c96d2518386b0d87c91c6862ddd5f949c4c0b446c187",
       "bytes": 13000192,
       "fileCount": 17,
@@ -105,34 +105,34 @@
     },
     {
       "month": "2024-09",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2024-09.tar",
-      "sha256": "f2a26c5f168b0e85233c9df6fae50d6c97f5e7ced6ba61c2f8822fd1a5db77d7",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2024-09.tar",
+      "sha256": "75bec35fc075ddddef3eb0629fe5923a48d872a298f1c1f3cbbc6dbbda2b83de",
       "bytes": 29778944,
       "fileCount": 24,
       "runCount": 22,
-      "revision": "f8586c5b1d74448487930f946b3617475aff638c73ec4f8c7812c2e9dd8cdbae"
+      "revision": "31d0f838397c7fd73b453542c8ad81eab23705bd8aa3a4e1966c4a8f77e76858"
     },
     {
       "month": "2024-10",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2024-10.tar",
-      "sha256": "afc7b3c7f0cb4fdbf8c725c7acea820bbd47a93b3598a974dd7771c09d781156",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2024-10.tar",
+      "sha256": "15de2bf036b46ed2f98258f823c7b11ffa885fbf54d65316897c6812f728c642",
       "bytes": 36052480,
       "fileCount": 28,
       "runCount": 26,
-      "revision": "0057ad1beb79e88f1c465c1ef052b618d4d02249a5322801bbae69a84e2d3514"
+      "revision": "390d66515ac80ee2926c5ab3887579f7fd18329216a014329c7daf50ddfef626"
     },
     {
       "month": "2024-11",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2024-11.tar",
-      "sha256": "c5736b639b5eec7716447cca99aaa2e8de8bd20846193a2dfbe8f885e76ce2c9",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2024-11.tar",
+      "sha256": "ecc2a7305e7cfee55ea0d9d27965f640eb479f1486270446ffe630d13beefdb6",
       "bytes": 35968512,
       "fileCount": 28,
       "runCount": 26,
-      "revision": "348c139f0ef72848920284b59e673f441000ec529163cc9b06d0937c1eaec4f9"
+      "revision": "a946ec5c4806e3d8ef2d9ec8312b9bdc01ccef4cf0946ce33483b40af16159be"
     },
     {
       "month": "2024-12",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2024-12.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2024-12.tar",
       "sha256": "1bd9d65d1f0a94e6599aa258ed34945590cc0f99a9d39cba98e984ac243f5c97",
       "bytes": 22135808,
       "fileCount": 18,
@@ -141,16 +141,16 @@
     },
     {
       "month": "2025-01",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2025-01.tar",
-      "sha256": "203edd6732ebd38abe7d9b86e8803ba95872fa8bc338d4f64b260a46fca66ba8",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2025-01.tar",
+      "sha256": "e23a61d1ceab7e8620bf8b29494b4ab1d40ef94d55911fa4f61160b66f732c3c",
       "bytes": 6007808,
       "fileCount": 8,
       "runCount": 6,
-      "revision": "b8bd7a3567ef86655cc7871fec1cb81a9f23a502ba26f715de6b34337a2b5bfc"
+      "revision": "2dd4dcbfd8f6ad52c4db50e867e2cccfb83d8937ae92c71e527adb659531e5b0"
     },
     {
       "month": "2025-02",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2025-02.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2025-02.tar",
       "sha256": "6c447b27bad15551b3bb7545f61c02706fbc5f80dfb88a3ced1b51889cd78842",
       "bytes": 420864,
       "fileCount": 3,
@@ -159,25 +159,25 @@
     },
     {
       "month": "2025-03",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2025-03.tar",
-      "sha256": "ea7ebb8102ef3a018304789fd8deed88dde226ddb6b4fcb2a987bb765b83c706",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2025-03.tar",
+      "sha256": "ff6ecc4d52b6152ea506b0f98fc42b18e26a2b27784b251b553d1d591a0b0546",
       "bytes": 1543168,
       "fileCount": 4,
       "runCount": 2,
-      "revision": "5e70f26ec768d9ce1b221f315d876cb0c42fba8b8fc41e377b1ef5959479da38"
+      "revision": "4c69cec213ffa767fbeeda5872ca7597ff984a71a86e11d301c06125a3780781"
     },
     {
       "month": "2025-04",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2025-04.tar",
-      "sha256": "1111a2c89c5ab35a0c9e7ce11fc1b74a718ca328da577e1d29b188e8b20f47ca",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2025-04.tar",
+      "sha256": "b98e79cf1ba35f8591cb449e815f94d53d5ccd483ebda10a87a0c3654e1d7b0f",
       "bytes": 9266688,
       "fileCount": 13,
       "runCount": 11,
-      "revision": "4795a32d173ca18d0a1cf5212aaba35862f5e07855d324c38f717a4d5e890cca"
+      "revision": "ca70d14059d51174ab31caebe1d1ee6053992a5ace37b0f698f2a1e4d31b74c8"
     },
     {
       "month": "2025-05",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2025-05.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2025-05.tar",
       "sha256": "68b9a229e316d61a61f060fb6be953e4b5fc3b166ef7a582ebbdfcccb8158509",
       "bytes": 26721792,
       "fileCount": 24,
@@ -186,25 +186,25 @@
     },
     {
       "month": "2025-06",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2025-06.tar",
-      "sha256": "0a0e87235c25ee6ad55195a802757b131729728cdc3310b5ab108fb675d23088",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2025-06.tar",
+      "sha256": "45e236446474555c2bbf2f2742b66016cafc7a958a34967bd931d58628538555",
       "bytes": 29882880,
       "fileCount": 22,
       "runCount": 20,
-      "revision": "f1a4e35297593fa4e3fdc628e15c80099ff8edf3d05c65a22879d1df50408b50"
+      "revision": "3a3fb8439244e2a22d4bfef808cc36613ad51111920282decdad01c7e24ba4f1"
     },
     {
       "month": "2025-07",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2025-07.tar",
-      "sha256": "6c73f2b7838d23cba563ea68966af498fcadd6115a6f5c2a8c1aa1270cd28298",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2025-07.tar",
+      "sha256": "290b4d6dccf9ef29ff90c216c17791cc138777b10e722ff1c6ca5c82e8666d49",
       "bytes": 32942080,
       "fileCount": 23,
       "runCount": 21,
-      "revision": "9a65457bd2b763fa64e6d3a78ba4d12adfa2820f7ed1392a095a5641d50c1262"
+      "revision": "da37977423764484ec0707420b7922acec9cf7d4a8a450dd869335a99290cb19"
     },
     {
       "month": "2025-08",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2025-08.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2025-08.tar",
       "sha256": "15753da2b48fcdfdf47cb91ba9e2443908cbe278da9fa27ea0e29f894eae5ca7",
       "bytes": 30334464,
       "fileCount": 21,
@@ -213,7 +213,7 @@
     },
     {
       "month": "2025-09",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2025-09.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2025-09.tar",
       "sha256": "d442c0ba7ea0ee28ec45c2a3f8503ed9b494e2ec794497cfcecfafc87b16090e",
       "bytes": 36782080,
       "fileCount": 24,
@@ -222,16 +222,16 @@
     },
     {
       "month": "2025-10",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2025-10.tar",
-      "sha256": "3a82f9c1faffcbe9bba0ca93a8885c8620b47c5be51408e47bd1ead2d7933163",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2025-10.tar",
+      "sha256": "b36ba6aeec597c5faf33de32a5b91317620859767dde8387e19a93c30979e359",
       "bytes": 38802944,
       "fileCount": 25,
       "runCount": 23,
-      "revision": "0c26eba8f3ead8d92f126f76b05a629549a099f47c16ada7cf2e0586c2082fd3"
+      "revision": "4c5161307a37f55ff49359eb08999ed6109612a3988880c34493bece031ec74e"
     },
     {
       "month": "2025-11",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2025-11.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2025-11.tar",
       "sha256": "c77d638deb94db45ae84493610771cdbdc9a94144e5200f9e2b6100ce1505874",
       "bytes": 34439168,
       "fileCount": 19,
@@ -240,16 +240,16 @@
     },
     {
       "month": "2025-12",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2025-12.tar",
-      "sha256": "7e528b59eaca66c47c6e064ae33d01b4804f3c01e428c730a8b97558cac2e776",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2025-12.tar",
+      "sha256": "e6db6c940854772a9baf793ee5c87a90daf3812471028005330b6ce3f10dfa91",
       "bytes": 33626112,
       "fileCount": 23,
       "runCount": 21,
-      "revision": "bea1bcc65c424a1969af26928dba7de8a742c33ec6363287231785dce8f2fc4b"
+      "revision": "c43a3a2f18c2ad29201d9f2ccb66b89b6c8638ebd6a396ce5b4526a895d71a0a"
     },
     {
       "month": "2026-01",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2026-01.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2026-01.tar",
       "sha256": "aa3ae95034c4ac3f9c341f871aa84e08a9e510bd69c62610f8dd5283485e908a",
       "bytes": 36182016,
       "fileCount": 23,
@@ -258,25 +258,25 @@
     },
     {
       "month": "2026-02",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2026-02.tar",
-      "sha256": "7ac79e1afe642af775f7a6105fab76f59e3d746fc4eea5bf93645e30e6c4c4b0",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2026-02.tar",
+      "sha256": "622570ef418f996ca5439313e53f98afd2e0d82c5a0fadcf9b3eb9500586f794",
       "bytes": 30512640,
       "fileCount": 24,
       "runCount": 22,
-      "revision": "9e57957f7c9c63427854b6e92c18354d8a59b8211a90ac51d893101f695df8de"
+      "revision": "9a0007aaa42d7826fbfbda64ea40debf9cb97d849f15235d8e150b35b0698179"
     },
     {
       "month": "2026-03",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2026-03.tar",
-      "sha256": "0c42d76ed640ecc3aebc68759ea17150f1c273fcec3bac33137eba6f40b97a7c",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2026-03.tar",
+      "sha256": "b839113596771c8e5d14655cb567378409ea415a9682d4e41a1f4e3872717e8c",
       "bytes": 33255936,
       "fileCount": 24,
       "runCount": 22,
-      "revision": "3c2ad15776b53d0d0c56ebef9777391572f6d1ac37e724f5476ab18c5d57a56e"
+      "revision": "1807b32515972b77e6020bcf8657ffb0a06aecbdb869cfdaeaee6dd51f20fa40"
     },
     {
       "month": "2026-04",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2026-04.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2026-04.tar",
       "sha256": "f094a734b611405f487399ead4b089a717573aa354676daa3d37bff2230c3c4c",
       "bytes": 31165440,
       "fileCount": 24,
@@ -285,7 +285,7 @@
     },
     {
       "month": "2026-05",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2026-05.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2026-05.tar",
       "sha256": "0916c9758f9da43ddaa523d5d44f9dfbcd218990349549eb3e464cd783c5355e",
       "bytes": 33569792,
       "fileCount": 30,
@@ -294,7 +294,7 @@
     },
     {
       "month": "2026-06",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2026-06.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2026-06.tar",
       "sha256": "e45b563ead3dbcb221e3933ba98a6f613ba8496fdc439021955eefb68834a092",
       "bytes": 23131136,
       "fileCount": 21,
@@ -303,7 +303,7 @@
     },
     {
       "month": "2026-07",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2026-07.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2026-07.tar",
       "sha256": "43d9018535949eae2c3edf1d4fb027d8e2d4c0a1d3d0ec59c472885566cbf79d",
       "bytes": 18162688,
       "fileCount": 17,
@@ -312,16 +312,16 @@
     },
     {
       "month": "2026-08",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2026-08.tar",
-      "sha256": "1a2619affa04a452d6a88a35d80b5b3ab3db3fcc4d578945570c3e4f5ef547f9",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2026-08.tar",
+      "sha256": "ce31eeb6a20a7cb1fdf6989e07cf564f3c24ea9e968b31c631d250697a8fc80d",
       "bytes": 14869504,
       "fileCount": 15,
       "runCount": 13,
-      "revision": "94872ffd33d302e4815fbbf738dca7bf9aaf760592bdf0891203a40b7cac4c73"
+      "revision": "e656e5346a8a09aa97f9d0897a428c28aeea9db9421afaddff273ced345a271c"
     },
     {
       "month": "2026-09",
-      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly/footpath-2026-09.tar",
+      "url": "https://github.com/deanxizian/footpath-studio/releases/download/history-2026-09-16-monthly-r2/footpath-2026-09.tar",
       "sha256": "43a75ae4e3fe82c1bb1e6cba91b871cec1900ab7f88bdcacbaba2c80d109cf73",
       "bytes": 13229056,
       "fileCount": 12,

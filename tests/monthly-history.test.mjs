@@ -54,7 +54,8 @@ test("monthly packages are standalone, deterministic, and reconstruct the exact 
       runs.push({
         id: `run-${i}`,
         start: Date.parse(iso) / 1000,
-        rows: [[3 + i / 10]],
+        rows:
+          i === 1 ? Array.from({ length: 9 }, () => [2]) : [[i === 2 ? 6 : 3]],
         packedUrl: `/data/${name}`,
       });
     }
@@ -103,6 +104,9 @@ test("monthly packages are standalone, deterministic, and reconstruct the exact 
       manifest.months[1],
     );
     assert.equal(february.runCount, 2);
+    // Nine slow fragments from one run must have the same weight as one fast
+    // fragment from another run. The median of the two run medians is 4 m/s.
+    assert.equal(february.history.defaultSpeed, 4);
     // Local file times must not churn unchanged monthly assets.
     for (const name of await readdir(data))
       await utimes(join(data, name), new Date(), new Date());
