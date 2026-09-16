@@ -11,13 +11,18 @@ const manifestPath = join(root, "published-history.json");
 const previous = JSON.parse(await readFile(manifestPath, "utf8"));
 const archive = join(root, ".cache", "footpath-history.tar");
 await mkdir(join(root, ".cache"), { recursive: true });
-execFileSync("tar", [
-  "-cf",
-  archive,
-  "-C",
-  source,
-  ...result.files.map((file) => `data/${file}`),
-]);
+execFileSync(
+  "tar",
+  [
+    "--format=ustar",
+    "-cf",
+    archive,
+    "-C",
+    source,
+    ...result.files.map((file) => `data/${file}`),
+  ],
+  { env: { ...process.env, COPYFILE_DISABLE: "1" } },
+);
 const manifest = {
   ...previous,
   sha256: await sha256(archive),
