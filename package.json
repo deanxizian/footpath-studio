@@ -1,0 +1,32 @@
+{
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "recharts": "3.10.1",
+    "three": "^0.186.0"
+  },
+  "name": "footpath-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "dev:archive": "vite --mode local-archive --host 127.0.0.1",
+    "preview": "vite preview --host 127.0.0.1",
+    "build": "vite build && node scripts/check-public-release.mjs",
+    "build:history": "node scripts/fetch-public-history.mjs && vite build --mode public-history && node scripts/check-public-release.mjs --history",
+    "check:public": "node scripts/check-public-release.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "pack:history": "node scripts/pack-public-history.mjs",
+    "format": "prettier --write src scripts tests vite.config.js",
+    "format:check": "prettier --check src scripts tests vite.config.js"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "packageManager": "pnpm@11.19.0",
+  "devDependencies": {
+    "prettier": "3.6.2",
+    "vite": "^8.3.0"
+  }
+}
