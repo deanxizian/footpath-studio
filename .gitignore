@@ -1,0 +1,27 @@
+# Dependencies and build output
+/node_modules/
+/dist/
+/.pnpm-store/
+/.vercel/
+/.cache/
+/public-history/
+*.log
+.DS_Store
+
+# Local personal activity data and exports
+/public/data/
+/private-data/
+/outputs/
+/.local/
+/sync-state/
+
+# Credentials and browser authentication state
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.enc.json
+cookies*.json
+storage-state*.json
+session*.json
