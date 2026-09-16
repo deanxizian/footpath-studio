@@ -37,7 +37,7 @@ pnpm preview
 
 源码与约 1 GB 的历史数据分开保存。**每个月一个 [Release](https://github.com/deanxizian/footpath-studio/releases)**，例如 `footpath-2026-09`，按北京时间的跑步开始日期归档。打开某月 Release 后点击“下载本月最新 Footpath 数据”，即可取得当月索引和三维轨迹。不使用 Git LFS。
 
-最新月份的 Release 还保存网站总目录与总索引。源码只保存稳定配置 [history-source.json](history-source.json)；构建时读取最新目录，按照固定附件 URL、大小和 SHA-256 下载并验证数据。网页按需加载单次跑步轨迹。
+最新月份的 Release 还保存网站总目录与总索引。构建和打包时自动识别当前 GitHub 仓库，读取该仓库的最新目录，按照固定附件 URL、大小和 SHA-256 下载并验证数据。网页按需加载单次跑步轨迹。
 
 ```sh
 # 从当前公开的月份 Releases 构建历史站
@@ -45,7 +45,7 @@ pnpm build:history
 pnpm preview
 ```
 
-`Daily Stryd Footpath` Action 每天北京时间 **06:20** 使用 Secrets 中的账号密码登录并检查已上传的 Footpath，也可以手动运行。登录令牌只保留在本次运行内存中；Cache 只保存可重建的抓取进度。有变化时，只更新对应月份 Release 和网站目录，再通过 Vercel Deploy Hook 发布网页。没有变化时，通常只检查同步状态；如果上次部署未完成，会重试部署。**数据自动化不创建 commit、分支或 PR**；应用代码的更改仍通过 PR、CI 与代码审查。配置方法见 [自动抓取](docs/stryd-sync.md)。
+`Daily Stryd Footpath` Action 每天北京时间 **03:30** 使用 Secrets 中的账号密码登录并检查已上传的 Footpath，也可以手动运行。登录令牌只保留在本次运行内存中；Cache 只保存可重建的抓取进度。有变化时，只更新对应月份 Release 和网站目录，再通过 Vercel Deploy Hook 发布网页。没有变化时，通常只检查同步状态；如果上次部署未完成，会重试部署。**数据自动化不创建 commit、分支或 PR**；应用代码的更改仍通过 PR、CI 与代码审查。配置方法见 [自动抓取](docs/stryd-sync.md)。
 
 ## 项目目录
 
@@ -55,8 +55,7 @@ tests/                 数据完整性和分析行为测试
 scripts/               历史快照打包、校验与构建检查
 scripts/stryd/          可选的账号登录、抓取与进度缓存
 docs/                  分析方法、格式和部署文档
-.github/               PR 模板、无密钥 CI 和受保护的每日抓取
-history-source.json    稳定的数据来源配置（动态清单保存在 Release）
+.github/               PR 模板、无密钥 CI 和仅从 main 执行的每日抓取
 ```
 
 `private-data/`、`public-history/`、`.cache/`、`dist/` 都是本地生成目录，不进入 Git。软件采用 [MIT](LICENSE) 许可证；依赖及参考来源见 [第三方说明](docs/attribution.md)。
