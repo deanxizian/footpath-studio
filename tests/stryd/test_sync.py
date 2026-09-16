@@ -9,7 +9,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts/stryd'))
 from auth import AUTH_TAG, StateStore, decrypt, encrypt, new_key
 from client import Reply, Stryd, SyncError, UTC
-from sync import synchronize, update_pull, validate_baseline
+from sync import synchronize, update_pull, validate_baseline, pending_pull
 from transform import pack_run, digest
 
 SESSION = dict(user_id='test-user', access_token='test-access', refresh_token='test-refresh', client_id='test-client')
@@ -195,6 +195,21 @@ class SessionTests(unittest.TestCase):
 
 
 class PublicationTests(unittest.TestCase):
+    def test_pending_pr_cannot_overwrite_newly_approved_history(self):
+        class Git:
+            repo = 'owner/repo'
+            def call(self, method, path):
+                if path.startswith('/pulls?'):
+                    return [{'number': 1, 'head': {'sha': 'pending', 'repo': {'full_name': self.repo}},
+                             'base': {'ref': 'main'}}]
+                return {'merge_base_commit': {'sha': 'previous-main'}}
+            def pages(self, path):
+                return [{'filename': 'published-history.json'}]
+            def read_file(self, path, ref):
+                return json.dumps({'revision': ref}).encode()
+        with self.assertRaisesRegex(SyncError, 'Approved history changed'):
+            pending_pull(Git())
+
     def test_baseline_cannot_download_credential_release_or_other_repo(self):
         for url in ['https://github.com/owner/repo/releases/download/stryd-sync-state/state.enc.json',
                     'https://github.com/other/repo/releases/download/history-2026/a.tar']:

@@ -33,9 +33,9 @@ pnpm preview
 
 ## 公开历史数据
 
-维护者 deanxizian 已同意公开自己的历史 Footpath。正式站采用独立 Release 附件中的历史快照：**608 次跑步，2023-11-22 至 2026-09-15**。数据包括足部坐标、时间、活动名称、距离、速度等运动元数据；不含登录会话或密钥。
+维护者 deanxizian 已同意公开自己的历史 Footpath。初始公开快照包含 **608 次跑步，2023-11-22 至 2026-09-15**；当前数量以 [published-history.json](published-history.json) 为准。数据包括足部坐标、时间、活动名称、距离、速度等运动元数据；不含登录会话或密钥。
 
-源码与约 1 GB 的历史数据分开保存。Release 按**北京时间的跑步开始日期**分月打包，共 **35 个月**，例如 `footpath-2026-09.tar`。每个月包包含当月索引和三维轨迹，`footpath-catalog.tar` 保存网站的总索引；不使用 Git LFS。
+源码与约 1 GB 的历史数据分开保存。Release 按**北京时间的跑步开始日期**分月打包，初始快照共 **35 个月**，例如 `footpath-2026-09.tar`。每个月包包含当月索引和三维轨迹，`footpath-catalog.tar` 保存网站的总索引；不使用 Git LFS。
 
 构建使用 [published-history.json](published-history.json) 指定的每个包的固定 URL、大小和 SHA-256 校验值，下载后汇总为完整历史数据，不隐式读取本地个人文件。网页仍按需加载单次跑步轨迹。
 

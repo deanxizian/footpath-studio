@@ -100,7 +100,9 @@ try {
       throw new Error("Catalog and manifest disagree");
   } else await assembleMonthlyHistory(manifest, archives, target);
   console.log(
-    `Verified ${manifest.runCount} runs in ${manifest.months.length} months; ready for the public history build.`,
+    catalogOnly
+      ? `Catalog verified: ${manifest.runCount} runs in ${manifest.months.length} months.`
+      : `Verified ${manifest.runCount} runs in ${manifest.months.length} months; ready for the public history build.`,
   );
 } catch (error) {
   await rm(target, { recursive: true, force: true });

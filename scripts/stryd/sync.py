@@ -136,6 +136,11 @@ def pending_pull(github):
     files = list(github.pages(f'/pulls/{pull["number"]}/files'))
     if not files or any(f['filename'] != MANIFEST for f in files):
         raise SyncError('Data PR contains source changes; review it before syncing again')
+    comparison = github.call('GET', '/compare/main...' + pull['head']['sha'])
+    original = github.read_file(MANIFEST, comparison['merge_base_commit']['sha'])
+    approved = github.read_file(MANIFEST, 'main')
+    if json.loads(original) != json.loads(approved):
+        raise SyncError('Approved history changed while the data PR was open; reconcile the PR before syncing')
     return pull
 
 
@@ -180,11 +185,13 @@ def publish(github, manifest, tag, commit):
     return release['html_url']
 
 
-def update_pull(github, manifest, expected_pull, result, release_url):
+def update_pull(github, manifest, expected_pull, result, release_url, expected_main=None):
     current = pending_pull(github)
     if (current or {}).get('head', {}).get('sha') != (expected_pull or {}).get('head', {}).get('sha'):
         raise SyncError('Data PR changed during sync; retry to avoid overwriting it')
     main = github.call('GET', '/git/ref/heads/main')['object']['sha']
+    if expected_main and main != expected_main:
+        raise SyncError('Main changed during sync; retry before updating the data PR')
     base = github.call('GET', '/git/commits/' + main)
     tree = github.call('POST', '/git/trees', {'base_tree': base['tree']['sha'], 'tree': [{
         'path': MANIFEST, 'mode': '100644', 'type': 'blob', 'content': json.dumps(manifest, indent=2) + '\n'}]}, allowed=(201,))
@@ -267,7 +274,7 @@ def main():
         node('scripts/pack-public-history.mjs', str(history), tag, snapshot, '--reuse')
         manifest = json.loads((ROOT / MANIFEST).read_text())
         release_url = publish(github, manifest, tag, main_sha)
-        result['pull_request'] = update_pull(github, manifest, pull, result, release_url)
+        result['pull_request'] = update_pull(github, manifest, pull, result, release_url, main_sha)
     else:
         result['pull_request'] = pull['html_url'] if pull else None
     safe = {k: v for k, v in result.items() if k != 'failed'}
