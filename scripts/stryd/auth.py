@@ -11,6 +11,7 @@ from client import SyncError, UTC
 
 AUTH_TAG = 'stryd-sync-state'
 AAD = b'footpath-studio/stryd-state/v1'
+STATE_RETENTION = 20
 
 
 def new_key():
@@ -78,3 +79,10 @@ class StateStore:
         latest = self.load()
         if latest != state:
             raise SyncError('Rotated session verification failed; no further Stryd requests sent')
+        # A Release has a finite asset limit. Keep recovery snapshots bounded,
+        # and only remove old ciphertext after the new state is safely readable.
+        assets = sorted((a for a in self.github.pages(f'/releases/{self.release_id}/assets')
+                         if a['name'].startswith('state-') and a['name'].endswith('.enc.json')),
+                        key=lambda a: int(a['id']), reverse=True)
+        for old in assets[STATE_RETENTION:]:
+            self.github.call('DELETE', f'/releases/assets/{int(old["id"])}', allowed=(204,))

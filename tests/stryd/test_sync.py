@@ -185,6 +185,40 @@ class SessionTests(unittest.TestCase):
         with self.assertRaisesRegex(SyncError, 'incomplete'):
             StateStore(Git(), 123, new_key()).load()
 
+    def test_state_retention_only_prunes_after_successful_readback(self):
+        key = new_key()
+        old_state = {'session': SESSION, 'checks': {}}
+        new_state = {'session': {**SESSION, 'access_token': 'rotated'}, 'checks': {}}
+        class Git:
+            def __init__(self, corrupt=False):
+                self.data = {i: encrypt(old_state, key) for i in range(1, 26)}
+                self.deleted, self.corrupt = [], corrupt
+            def call(self, method, path, **kwargs):
+                if method == 'DELETE':
+                    # The newest state must already be durable when deletion begins.
+                    self.assert_latest = decrypt(self.data[max(self.data)], key)
+                    identifier = int(path.rsplit('/', 1)[1])
+                    self.deleted.append(identifier)
+                    del self.data[identifier]
+                    return None
+                return dict(draft=True, tag_name=AUTH_TAG)
+            def pages(self, path):
+                return [dict(id=i, name=f'state-{i}.enc.json', state='uploaded') for i in self.data]
+            def upload(self, release_id, name, content, content_type):
+                self.data[max(self.data) + 1] = content
+            def asset(self, identifier):
+                return b'invalid encrypted state' if self.corrupt else self.data[identifier]
+        github = Git()
+        StateStore(github, 123, key).save(new_state)
+        self.assertEqual(len(github.data), 20)
+        self.assertEqual(github.deleted, [6, 5, 4, 3, 2, 1])
+        self.assertEqual(github.assert_latest, new_state)
+        self.assertEqual(decrypt(github.data[26], key), new_state)
+        broken = Git(corrupt=True)
+        with self.assertRaises(SyncError):
+            StateStore(broken, 123, key).save(new_state)
+        self.assertEqual(broken.deleted, [])
+
     def test_calendar_cursor_and_late_pages(self):
         older, newer = activity(1, days=200), activity(2)
         http = FakeHTTP([reply({'activities': [newer]}), reply({'activities': [newer]}),
