@@ -128,7 +128,7 @@ def publish(github, manifest, directory, commit, before_discovery=lambda: None):
     return f'https://github.com/{github.repo}/releases/tag/footpath-{manifest["latestMonth"]}'
 
 
-def deploy_site(revision, hook, site, force=False, http=None, pause=time.sleep, attempts=60):
+def deploy_site(revision, hook, site, http=None, pause=time.sleep, attempts=60):
     """Compare production with Releases on every run so failed builds retry later."""
     if not re.fullmatch(r'https://api\.vercel\.com/v1/integrations/deploy/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+', hook or ''):
         raise SyncError('Configure the VERCEL_DEPLOY_HOOK repository secret')
@@ -143,16 +143,13 @@ def deploy_site(revision, hook, site, force=False, http=None, pause=time.sleep, 
             return reply.status == 200 and json.loads(reply.body).get('revision') == revision
         except (SyncError, ValueError):
             return False
-    already_current = current()
-    if already_current and not force:
+    if current():
         return 'current'
     # Hook is deliberately kept out of logs and all build subprocess environments.
     reply = http.request('POST', hook + '?buildCache=false', payload=b'', retry=False)
     response = as_json(reply, 'Vercel deployment trigger', (200, 201, 202))
     if not response.get('job', {}).get('id'):
         raise SyncError('Vercel did not acknowledge the deployment request')
-    if already_current:
-        return 'requested (data already current)'
     for _ in range(attempts):
         pause(10)
         if current():

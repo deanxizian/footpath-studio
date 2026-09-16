@@ -39,7 +39,7 @@
 
 在 Vercel 项目的 **Settings → Git → Deploy Hooks** 创建绑定 `main` 的 Hook，将地址保存为上面的 Secret。Vercel 仍使用 `pnpm build:history` 构建，不接收 Stryd 账号密码。更新 Release 不会产生 Git push，因此保留 Hook 来触发数据更新后的构建；`STRYD_SITE_URL` 用于核对生产站数据版本，并在部署失败后重试。
 
-在 Actions 手动运行 `Daily Stryd Footpath`，可设置 `max_downloads=1` 做小规模验证；`refresh_session=true` 同时验证本次内存会话续期，`deploy_site=true` 在没有新数据时也请求一次网页重建。工作流默认按日运行，无需额外启用变量。需要暂停时，在 Actions 页面停用该工作流；恢复时重新启用。
+在 Actions 手动运行 `Daily Stryd Footpath`，可设置 `max_downloads=1` 做小规模验证；`refresh_session=true` 同时验证本次内存会话续期。手动和定时运行都只在生产站的数据版本落后时请求部署，没有强制重建选项；数据已是最新时，摘要显示 `current`，不会重复触发 Hook。工作流默认按日运行，无需额外启用变量。需要暂停时，在 Actions 页面停用该工作流；恢复时重新启用。
 
 抓取器仅使用 Python 标准库。开发验证：
 
