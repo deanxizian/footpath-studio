@@ -30,7 +30,13 @@ Release 标签使用 `footpath-YYYY-MM`，标题列出月份和跑步数量。�
 
 代码通过 GitHub 集成部署：功能分支生成 Preview，PR 合入 `main` 后生产部署。数据通过 [Vercel Deploy Hook](https://vercel.com/docs/deploy-hooks) 部署：数据 Action 更新 Releases 后，请求绑定 `main` 的 Hook，让同一份代码重新读取最新数据并构建。无需为了触发部署创建 commit。
 
-Hook 地址只保存在 Repository Secret `VERCEL_DEPLOY_HOOK` 中，不放入源码或日志。Vercel 构建只读取公开附件，不接收 Stryd 会话。同步任务每次比较生产站的数据 revision 与已发布目录；不一致时触发部署并等待更新，超时会使 Action 失败，下次同步继续重试。手动运行中的 `deploy_site` 可以主动重建当前数据。
+Hook 地址只保存在 Repository Secret `VERCEL_DEPLOY_HOOK` 中，不放入源码或日志。Vercel 构建只读取公开附件，不接收 Stryd 会话。同步任务每次比较生产站的数据 revision 与已发布目录；不一致时触发部署并等待更新，超时会使 Action 失败，下次同步继续重试。定时和手动同步都在数据已是最新时跳过 Hook，没有强制重建选项。验证同步时无需再请求部署，避免 GitHub 合入 `main` 自动部署之后重复构建相同数据；需要排查构建故障时，在 Vercel 中手动 Redeploy。
+
+### 部署保留
+
+维护者项目在 Vercel 的 **Settings → Build and Deployment → Deployment Retention Policy** 中设置：取消、失败和预览部署保留 **1 天**，生产部署保留 **1 周**。此设置保存在 Vercel 项目中，fork 本仓库不会继承。
+
+保留期限不是部署数量上限。Vercel 对最近的部署、当前生产域名和活跃分支等存在[保留例外](https://vercel.com/docs/deployment-retention#exceptions-to-the-retention-policy)，自动回收也存在延迟。历史站仍会将完整数据打包进每个部署，因此仅缩短期限不能保证存储降至免费额度以内；应结合输出体积和旧部署清理处理。
 
 ## 手动准备 / 重现数据
 

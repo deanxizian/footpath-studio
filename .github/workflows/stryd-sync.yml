@@ -18,10 +18,6 @@ on:
         description: 'Also test token refresh within this run'
         type: boolean
         default: false
-      deploy_site:
-        description: 'Rebuild the website even when its data is already current'
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -65,7 +61,6 @@ jobs:
           REFRESH_SESSION: ${{ inputs.refresh_session && 'true' || 'false' }}
           VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
           STRYD_SITE_URL: ${{ vars.STRYD_SITE_URL }}
-          DEPLOY_SITE: ${{ inputs.deploy_site && 'true' || 'false' }}
       - name: Save optional fetch progress (no credentials)
         if: ${{ always() && !cancelled() && hashFiles('.cache/stryd-checks.json') != '' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6

@@ -192,7 +192,7 @@ def main():
     try:
         check_main()
         result['deployment'] = deploy_site(baseline['revision'], os.environ.get('VERCEL_DEPLOY_HOOK'),
-            os.environ.get('STRYD_SITE_URL'), force=os.environ.get('DEPLOY_SITE') == 'true')
+            os.environ.get('STRYD_SITE_URL'))
     except SyncError as error:
         deployment_failed = True
         result['deployment'] = str(error)
