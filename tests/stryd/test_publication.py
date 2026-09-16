@@ -46,6 +46,8 @@ class ReleaseOnlyGit:
             self.releases[identifier].update(body)
             if body.get('make_latest') == 'true':
                 self.latest = identifier
+            elif body.get('make_latest') == 'false' and self.latest == identifier:
+                self.latest = None
             return self.releases[identifier]
         return self.releases[identifier]
     def upload(self, release_id, name, content, content_type=None, repair=False):
@@ -119,6 +121,19 @@ class PublicationTests(unittest.TestCase):
         publish(self.github, new, self.directory, 'main')
         self.assertEqual(latest_manifest(self.github), new)
         self.assertEqual(len(self.github.releases), 2)
+    def test_month_metadata_updates_preserve_latest_until_discovery_commit(self):
+        first = self.fixture(['2026-08', '2026-09'])
+        publish(self.github, first, self.directory, 'main')
+        revised = self.fixture(['2026-08', '2026-09'], 'revised')
+        def still_first():
+            self.assertEqual(latest_manifest(self.github), first)
+        publish(self.github, revised, self.directory, 'main', before_discovery=still_first)
+        self.assertEqual(latest_manifest(self.github), revised)
+        next_month = self.fixture(['2026-08', '2026-09', '2026-10'], 'next')
+        def still_revised():
+            self.assertEqual(latest_manifest(self.github), revised)
+        publish(self.github, next_month, self.directory, 'main', before_discovery=still_revised)
+        self.assertEqual(latest_manifest(self.github), next_month)
     def test_alias_failure_rolls_back_and_killed_runner_can_repair(self):
         first = self.fixture(['2026-09'])
         publish(self.github, first, self.directory, 'main')

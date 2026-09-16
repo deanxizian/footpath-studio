@@ -110,8 +110,12 @@ def publish(github, manifest, directory, commit, before_discovery=lambda: None):
             body += ('\n此月份同时保存网站的总目录 `published-history.json` 与 `footpath-catalog-…tar`。'
                      '它们用于自动汇总所有月份，不是额外的一份跑步数据。\n')
         if release.get('body') != body or release.get('draft'):
-            github.call('PATCH', f'/releases/{release["id"]}', {'body': body, 'draft': False,
-                'name': f'Footpath · {month["month"]} · {month["runCount"]} 次跑步', 'make_latest': 'false'})
+            update = {'body': body, 'name': f'Footpath · {month["month"]} · {month["runCount"]} 次跑步'}
+            # Publishing a new month must not change discovery yet. Updating
+            # an existing month must also preserve the current Latest marker.
+            if release.get('draft'):
+                update.update(draft=False, make_latest='false')
+            github.call('PATCH', f'/releases/{release["id"]}', update)
         print(f'Verified monthly Release: {tag}, {month["runCount"]} runs.', flush=True)
     latest = public['footpath-' + manifest['latestMonth']]
     # Global discovery is updated last: partial uploads can never be advertised.
