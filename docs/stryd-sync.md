@@ -5,13 +5,13 @@
 ## 数据流程
 
 1. 从已审阅的 `main` 执行代码，只使用受保护的 `stryd-sync` 环境凭据。
-2. 读取公开历史总索引。若有未合并的 `sync/footpath-data` PR，读取其中的清单作为基线；不执行该分支的代码，并拒绝包含其他文件修改的 PR。
-3. 分页扫描全部 Stryd 日历，因此旧活动今天才上传的 Footpath 也能被发现。下载新记录，重查最近 14 天的已归档记录。上游尚未完成处理的记录下次重试；每次默认最多检查 100 份，可手动设为 1–500，并启用 `recheck_all` 检查更早记录。
-4. 新增或修订记录通过原始内容摘要去重。没有数据变化时，不下载完整历史、不发布 Release、不创建 PR。
-5. 有变化时校验并合并历史，按跑步开始时间的北京时间月份打包。仅上传变化月份和总索引到新的 `history-…-sync-…` Release；未变化的月包复用先前附件的固定 URL 和 SHA-256。原来的快照可继续构建。
-6. 创建或更新一个数据 PR，唯一修改文件是 `published-history.json`。显式触发无密钥 CI，保留仓库的代码审查和 `main` 保护。审阅者合并后，Vercel 自动构建并发布；抓取任务不自动合并 PR。
+2. 从最新月份 Release 读取完整历史目录与总索引，校验来源、附件摘要及内容。不读写任何数据 PR 或数据分支。
+3. 分页扫描全部 Stryd 日历，因此旧活动今天才上传的 Footpath 也能被发现。下载新记录，重查最近 14 天的已归档记录。上游尚未处理完成的记录下次重试；每次默认最多检查 100 份，可手动设为 1–500，并启用 `recheck_all` 检查更早记录。
+4. 新增或修订记录通过原始内容摘要去重。没有数据变化时，不下载完整历史、不更新月份数据包。
+5. 有变化时校验并合并历史，只上传变化的月份包。每月固定一个 `footpath-YYYY-MM` Release，旧月份不变，新月份才创建 Release。全部上传成功后更新最新月份的总目录，未变化的包复用原固定 URL 和 SHA-256。
+6. 比较生产网页和 Release 中的数据版本。有新数据或上次部署失败时，通过 Vercel Deploy Hook 重新构建 `main`，等待网页数据更新。超时会报错，下一次运行重试。自动化不会创建 commit、分支或 PR。
 
-运行摘要列出活动数、Footpath 数、新增/修订、未完成和失败数，以及数据 PR。403 或失效会话会停止访问并报错，不尝试绕过 Stryd 权限。
+运行摘要列出活动数、Footpath 数、新增/修订、未完成和失败数、月份 Release 及网页更新结果。403 或失效会话会停止访问并报错，不尝试绕过 Stryd 权限。代码变更仍通过 PR、CI 和代码审查后才合入 `main`。
 
 ## 凭据保存
 
@@ -21,7 +21,7 @@
 - 每次令牌刷新后，立即上传新的加密状态并读回验证，再继续请求。状态按附件 ID 读取最新版本；不回退到旧的刷新令牌。会话刷新 POST 遇到不确定响应时不重试。
 - 仅在新状态读回验证成功后清理旧附件，保留最近 20 份加密备份，避免长期运行达到 Release 附件数量上限。保存或验证失败时不删除旧备份。
 - 工作流全局串行，运行中的任务不会被下一次定时任务取消；环境只允许受保护的分支。只有 `main` 可以执行抓取任务，PR 的 CI 不读取凭据。
-- GitHub API 使用该次运行的短期 `GITHUB_TOKEN`，不需要额外保存长期 GitHub PAT。它拥有上传附件、创建数据 PR、触发 CI 所需的权限。
+- GitHub API 使用该次运行的短期 `GITHUB_TOKEN`，不需要额外保存长期 GitHub PAT。工作流仅授予 `contents: write`，用于 Release 和附件；不授予 PR 或 Actions 写入权限，也没有 Git commit 或 PR 写入逻辑。
 
 不要发布或删除凭据草稿。若状态损坏、刷新失效或上游登录撤销，重新连接账号。账户会话可能失效，自动化不能保证永久免登录。
 
@@ -49,11 +49,13 @@ python -m venv .venv
 | 配置 | 类型 | 用途 |
 | --- | --- | --- |
 | `STRYD_AUTH_KEY` | 环境 Secret | 解密会话状态 |
+| `VERCEL_DEPLOY_HOOK` | 环境 Secret | 触发 `main` 的 Vercel 构建 |
+| `STRYD_SITE_URL` | 仓库 Variable | 公开生产站的 HTTPS 根地址，用于核对数据版本 |
 | `STRYD_STATE_RELEASE_ID` | 仓库 Variable | 凭据草稿的 ID |
 | `STRYD_SYNC_ENABLED` | 仓库 Variable | `true` 启用，`false` 暂停 |
 
-仓库设置中开启 **Actions → General → Allow GitHub Actions to create and approve pull requests**，以允许创建数据 PR；脚本不会批准自己的 PR。保留 `main` 的 PR、CI 和审阅对话保护。
+在 Vercel 项目的 **Settings → Git → Deploy Hooks** 创建绑定 `main` 的 Hook，将地址保存为 `stryd-sync` 环境的 `VERCEL_DEPLOY_HOOK` Secret；将公开网站根地址保存为仓库变量 `STRYD_SITE_URL`。Hook 地址具有触发部署的能力，应作为 Secret 保存。Vercel 仍使用 `pnpm build:history` 构建。
 
-在 Actions 手动运行一次，确认抓取摘要和数据 PR。可选 `refresh_session` 会额外测试一次令牌刷新及加密持久化。新建个人仓库时，还需要自己的初始历史快照及公开数据授权；直接 fork 本项目并不会自动获得维护者账号或 Secret。
+不需要开启 **Allow GitHub Actions to create and approve pull requests**。保留 `main` 的 PR、CI 和审阅对话保护。在 Actions 手动运行一次，确认抓取摘要和网页版本。可选 `refresh_session` 测试令牌刷新及加密持久化；`deploy_site` 在没有新数据时也请求一次网页重建。
 
-`GITHUB_TOKEN` 创建的 PR 可能出现等待人工批准的 PR 事件工作流；本项目另外显式 dispatch 无密钥 CI。见 [GitHub 的触发说明](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs)。代码审查与 Vercel Preview 仍应在合并前检查。
+新建个人仓库时，还需要自己的初始月份 Releases、`history-source.json` 仓库配置和公开数据授权。直接 fork 本项目不会获得维护者账号、Secret 或自动开启同步。

@@ -61,24 +61,31 @@ export function groupHistoryMonths(runs) {
 
 export function validatePublishedHistory(manifest) {
   const positive = (value) => Number.isSafeInteger(value) && value > 0;
-  const validAsset = (asset, name) =>
+  const monthlyReleases =
+    manifest?.format === "footpath-studio-monthly-history-v2";
+  const validAsset = (asset, name, month) =>
     asset &&
     typeof asset.url === "string" &&
     /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/releases\/download\/[a-zA-Z0-9][\w.-]*\/[^/]+$/.test(
       asset.url,
     ) &&
-    asset.url.endsWith("/" + name) &&
+    (monthlyReleases
+      ? new RegExp(`/footpath-${month}/${name}-[a-f0-9]{64}\\.tar$`).test(
+          asset.url,
+        )
+      : asset.url.endsWith("/" + name + ".tar")) &&
     /^[a-f0-9]{64}$/.test(asset.sha256) &&
     positive(asset.bytes) &&
     asset.bytes < 2 ** 31 &&
     positive(asset.fileCount);
   if (
-    manifest?.format !== "footpath-studio-monthly-history-v1" ||
+    (!monthlyReleases &&
+      manifest?.format !== "footpath-studio-monthly-history-v1") ||
     manifest.timeZone !== HISTORY_TIME_ZONE ||
     !positive(manifest.runCount) ||
     !positive(manifest.fileCount) ||
     !/^[a-f0-9]{64}$/.test(manifest.revision) ||
-    !validAsset(manifest.catalog, "footpath-catalog.tar") ||
+    !validAsset(manifest.catalog, "footpath-catalog", manifest.latestMonth) ||
     manifest.catalog.fileCount !== 2 ||
     !Array.isArray(manifest.months) ||
     !manifest.months.length ||
@@ -87,13 +94,19 @@ export function validatePublishedHistory(manifest) {
     manifest.months.some(
       (item) =>
         !monthPattern.test(item.month) ||
-        !validAsset(item, `footpath-${item.month}.tar`) ||
+        !validAsset(item, `footpath-${item.month}`, item.month) ||
         !positive(item.runCount) ||
         item.fileCount < 3 ||
         !/^[a-f0-9]{64}$/.test(item.revision),
     ) ||
     manifest.months.reduce((total, item) => total + item.runCount, 0) !==
-      manifest.runCount
+      manifest.runCount ||
+    (monthlyReleases &&
+      manifest.latestMonth !==
+        manifest.months
+          .map((item) => item.month)
+          .sort()
+          .at(-1))
   )
     throw new Error("Invalid monthly history manifest");
   return manifest;
@@ -157,38 +170,39 @@ export async function writeHistoryArchive(archive, entries) {
 export async function packMonthlyHistory(
   source,
   output,
-  releaseBaseUrl,
+  repositoryUrl,
   metadata,
 ) {
-  if (
-    !/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/releases\/download\/[a-zA-Z0-9][\w.-]*$/.test(
-      releaseBaseUrl,
-    )
-  )
+  if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(repositoryUrl))
     throw new Error("Invalid history release URL");
   const data = join(source, "data");
   const verified = await verifyHistory(data);
   const history = verified.history;
   await mkdir(output, { recursive: true });
-  const packageAsset = async (name, entries) => {
-    const archive = join(output, name);
+  const groups = groupHistoryMonths(history.runs);
+  const latestMonth = [...groups.keys()].at(-1);
+  const packageAsset = async (month, name, entries) => {
+    const directory = join(output, `footpath-${month}`);
+    await mkdir(directory, { recursive: true });
+    const archive = join(directory, name);
     await writeHistoryArchive(archive, entries);
     return {
-      url: `${releaseBaseUrl}/${name}`,
+      url: `${repositoryUrl}/releases/download/footpath-${month}/${name}`,
       sha256: await sha256(archive),
       bytes: (await stat(archive)).size,
       fileCount: entries.length,
     };
   };
   const catalog = await packageAsset(
-    "footpath-catalog.tar",
+    latestMonth,
+    `footpath-catalog-${verified.index.slice(0, -4)}.tar`,
     ["version.json", verified.index].map((name) => ({
       name: `data/${name}`,
       path: join(data, name),
     })),
   );
   const months = [];
-  for (const [month, runs] of groupHistoryMonths(history.runs)) {
+  for (const [month, runs] of groups) {
     const speedIndex = history.rowFields?.indexOf("speed") ?? -1;
     const defaultSpeed = defaultTarget(
       runs.map((run) => ({
@@ -216,24 +230,32 @@ export async function packMonthlyHistory(
     );
     if (
       previous?.revision === revision &&
+      previous.url.startsWith(
+        `${repositoryUrl}/releases/download/footpath-${month}/`,
+      ) &&
       previous.runCount === runs.length &&
       previous.fileCount === geometry.length + 2
     ) {
       months.push(previous);
       continue;
     }
-    const asset = await packageAsset(`footpath-${month}.tar`, [
-      { name: "data/version.json", bytes: version },
-      { name: `data/${index}`, bytes: indexBytes },
-      ...geometry.map((name) => ({
-        name: `data/${name}`,
-        path: join(data, name),
-      })),
-    ]);
+    const asset = await packageAsset(
+      month,
+      `footpath-${month}-${revision}.tar`,
+      [
+        { name: "data/version.json", bytes: version },
+        { name: `data/${index}`, bytes: indexBytes },
+        ...geometry.map((name) => ({
+          name: `data/${name}`,
+          path: join(data, name),
+        })),
+      ],
+    );
     months.push({ month, ...asset, runCount: runs.length, revision });
   }
   return validatePublishedHistory({
-    format: "footpath-studio-monthly-history-v1",
+    format: "footpath-studio-monthly-history-v2",
+    latestMonth,
     snapshotDate: metadata.snapshotDate,
     owner: metadata.owner,
     timeZone: HISTORY_TIME_ZONE,

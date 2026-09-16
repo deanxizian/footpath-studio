@@ -15,7 +15,9 @@ if (!entries.some((entry) => entry.name === "index.html"))
 if (history)
   await verifyHistory(
     join(dist, "data"),
-    JSON.parse(await readFile(join(root, "published-history.json"), "utf8")),
+    JSON.parse(
+      await readFile(join(root, ".cache/published-history.json"), "utf8"),
+    ),
   );
 let tracked = [];
 try {
@@ -34,5 +36,5 @@ if (tracked.some((path) => prohibited.test(path)))
     "Local data or credentials must not enter the source repository",
   );
 console.log(
-  `Public build verified (${history ? "approved historical snapshot" : "synthetic demo"}).`,
+  `Public build verified (${history ? "verified monthly Release snapshot" : "synthetic demo"}).`,
 );
