@@ -117,6 +117,20 @@ test("monthly packages are standalone, deterministic, and reconstruct the exact 
       { owner: "example", snapshotDate: "2024-03-01" },
     );
     assert.deepEqual(repacked, manifest);
+    const reusedOutput = join(directory, "reused");
+    const reused = await packMonthlyHistory(
+      source,
+      reusedOutput,
+      release + "-next",
+      {
+        owner: "example",
+        snapshotDate: "2024-03-02",
+        previous: manifest,
+      },
+    );
+    assert.deepEqual(reused.months, manifest.months);
+    assert.deepEqual(await readdir(reusedOutput), ["footpath-catalog.tar"]);
+    assert.match(reused.catalog.url, /history-test-next/);
     const archives = new Map(
       [manifest.catalog, ...manifest.months].map((asset) => [
         asset.url,

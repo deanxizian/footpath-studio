@@ -26,6 +26,7 @@ const manifest = await packMonthlyHistory(
   {
     owner: previous.owner,
     snapshotDate: process.argv[4] || new Date().toISOString().slice(0, 10),
+    previous: process.argv.includes("--reuse") ? previous : undefined,
   },
 );
 await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n");

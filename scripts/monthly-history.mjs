@@ -211,6 +211,17 @@ export async function packMonthlyHistory(
     const geometry = [
       ...new Set(runs.map((run) => run.packedUrl.slice("/data/".length))),
     ];
+    const previous = metadata.previous?.months?.find(
+      (item) => item.month === month,
+    );
+    if (
+      previous?.revision === revision &&
+      previous.runCount === runs.length &&
+      previous.fileCount === geometry.length + 2
+    ) {
+      months.push(previous);
+      continue;
+    }
     const asset = await packageAsset(`footpath-${month}.tar`, [
       { name: "data/version.json", bytes: version },
       { name: `data/${index}`, bytes: indexBytes },

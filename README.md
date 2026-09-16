@@ -9,6 +9,7 @@
 - 固定速度范围（目标速度 ±5%）、路面和日期筛选，长期变化及 5 次滚动中位数。
 - 单次跑步分段分析、原始片段查看、图片和 CSV 导出。
 - 导入一份或多份 Footpath JSON；文件在浏览器中处理，不上传，刷新后需重新导入。
+- 可选 GitHub Actions 每日抓取，按月归档，自动创建数据更新 PR。
 
 三维对比采用每侧的真实代表片段，不生成平均轨迹。每侧至少需要 3 段有效样本；坐标保留原始单位，不等同于人体步幅或身体振幅。计算方法见 [分析口径](docs/analysis.md)。
 
@@ -44,7 +45,7 @@ pnpm build:history
 pnpm preview
 ```
 
-这是历史快照。旧抓取仓库已删除，目前新项目不自动登录 Stryd 或同步新增活动。发布新快照的方法见 [数据与部署](docs/deployment.md)。
+维护者的 `Daily Stryd Footpath` Action 每天北京时间 **06:20** 检查已上传的 Footpath，也可以手动运行。新数据归入跑步开始月份；未变化的月包复用原 Release，新版本使用新的固定附件。自动化创建或更新数据 PR，审阅并合入 `main` 后由 Vercel 发布。没有新数据时不创建 Release 或 PR。配置和重新连接账号的方法见 [自动抓取](docs/stryd-sync.md)。
 
 ## 项目目录
 
@@ -52,8 +53,9 @@ pnpm preview
 src/                   网页、三维渲染、数据模型和合成示例
 tests/                 数据完整性和分析行为测试
 scripts/               历史快照打包、校验与构建检查
+scripts/stryd/         可选的账号抓取与加密会话管理
 docs/                  分析方法、格式和部署文档
-.github/               PR 模板和无账号密钥的 CI
+.github/               PR 模板、无密钥 CI 和受保护的每日抓取
 published-history.json 固定公开快照的来源与校验值
 ```
 
