@@ -177,7 +177,7 @@ def main():
         node('scripts/fetch-public-history.mjs', '--manifest', str(baseline_file), '--target', str(history))
         apply_updates(history / 'data', updates)
         output = WORK / 'publication'
-        node('scripts/pack-public-history.mjs', '--source', str(history), '--output', str(output), '--previous', str(baseline_file))
+        node('scripts/pack-public-history.mjs', '--source', str(history), '--output', str(output))
         manifest = json.loads((output / 'published-history.json').read_text())
         check_main()
         result['release'] = publish(github, manifest, output, checkout, before_discovery=check_main)

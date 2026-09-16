@@ -225,20 +225,9 @@ export async function packMonthlyHistory(
     const geometry = [
       ...new Set(runs.map((run) => run.packedUrl.slice("/data/".length))),
     ];
-    const previous = metadata.previous?.months?.find(
-      (item) => item.month === month,
-    );
-    if (
-      previous?.revision === revision &&
-      previous.url.startsWith(
-        `${repositoryUrl}/releases/download/footpath-${month}/`,
-      ) &&
-      previous.runCount === runs.length &&
-      previous.fileCount === geometry.length + 2
-    ) {
-      months.push(previous);
-      continue;
-    }
+    // Keep a verified local copy of every archive, even for unchanged months.
+    // Publication skips healthy remote assets but needs these bytes to repair
+    // a missing, incomplete or corrupted upload in a fresh Actions checkout.
     const asset = await packageAsset(
       month,
       `footpath-${month}-${revision}.tar`,

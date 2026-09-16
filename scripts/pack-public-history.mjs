@@ -1,10 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { packMonthlyHistory } from "./monthly-history.mjs";
-import {
-  validateHistorySource,
-  validateSourceManifest,
-} from "./history-source.mjs";
+import { validateHistorySource } from "./history-source.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const args = process.argv.slice(2);
@@ -20,13 +17,6 @@ const output = value("--output", join(root, ".cache/monthly-publication"));
 const config = validateHistorySource(
   JSON.parse(await readFile(join(root, "history-source.json"), "utf8")),
 );
-const previousFile = value("--previous");
-const previous = previousFile
-  ? validateSourceManifest(
-      JSON.parse(await readFile(previousFile, "utf8")),
-      config.repository,
-    )
-  : undefined;
 await mkdir(output, { recursive: true });
 const manifest = await packMonthlyHistory(
   source,
@@ -37,7 +27,6 @@ const manifest = await packMonthlyHistory(
     snapshotDate: new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Shanghai",
     }).format(new Date()),
-    previous,
   },
 );
 await writeFile(

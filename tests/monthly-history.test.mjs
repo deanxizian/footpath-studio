@@ -120,13 +120,22 @@ test("monthly packages are standalone, deterministic, and reconstruct the exact 
     const reused = await packMonthlyHistory(source, reusedOutput, release, {
       owner: "example",
       snapshotDate: "2024-03-02",
-      previous: manifest,
     });
     assert.deepEqual(reused.months, manifest.months);
-    assert.deepEqual(await readdir(reusedOutput), ["footpath-2024-02"]);
-    assert.deepEqual(await readdir(join(reusedOutput, "footpath-2024-02")), [
-      basename(manifest.catalog.url),
-    ]);
+    // A fresh publication directory must retain every unchanged archive so
+    // the publisher can repair remote upload damage without a previous cache.
+    for (const asset of [reused.catalog, ...reused.months]) {
+      const tag = new URL(asset.url).pathname.split("/").at(-2);
+      const bytes = await readFile(
+        join(reusedOutput, tag, basename(asset.url)),
+      );
+      assert.equal(bytes.length, asset.bytes);
+      assert.equal(hash(bytes), asset.sha256);
+      assert.deepEqual(
+        bytes,
+        await readFile(join(output, tag, basename(asset.url))),
+      );
+    }
     assert.equal(reused.catalog.url, manifest.catalog.url);
     assert.match(
       manifest.months[0].url,
