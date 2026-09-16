@@ -1,37 +1,38 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import { execFileSync } from "node:child_process";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
-import { sha256, verifyHistory } from "./history-files.mjs";
+import { packMonthlyHistory } from "./monthly-history.mjs";
 
-// This command only prepares a local artifact. Publishing is a separate explicit step.
 const root = resolve(import.meta.dirname, "..");
 const source = resolve(root, process.argv[2] || "private-data");
-const result = await verifyHistory(join(source, "data"));
+const tag = process.argv[3];
+if (!tag || !/^[a-zA-Z0-9][\w.-]*$/.test(tag))
+  throw new Error(
+    "Usage: pnpm pack:history [source] <new-release-tag> [snapshot-date]",
+  );
 const manifestPath = join(root, "published-history.json");
 const previous = JSON.parse(await readFile(manifestPath, "utf8"));
-const archive = join(root, ".cache", "footpath-history.tar");
-await mkdir(join(root, ".cache"), { recursive: true });
-execFileSync(
-  "tar",
-  [
-    "--format=ustar",
-    "-cf",
-    archive,
-    "-C",
-    source,
-    ...result.files.map((file) => `data/${file}`),
-  ],
-  { env: { ...process.env, COPYFILE_DISABLE: "1" } },
+const oldUrl = previous.catalog?.url || previous.url;
+const match =
+  /^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/releases\/download\//.exec(
+    oldUrl,
+  );
+if (!match) throw new Error("Invalid previous release URL");
+const output = join(root, ".cache", "history-releases", tag);
+await mkdir(output, { recursive: true });
+const manifest = await packMonthlyHistory(
+  source,
+  output,
+  `https://github.com/${match[1]}/releases/download/${tag}`,
+  {
+    owner: previous.owner,
+    snapshotDate: process.argv[4] || new Date().toISOString().slice(0, 10),
+  },
 );
-const manifest = {
-  ...previous,
-  sha256: await sha256(archive),
-  bytes: (await stat(archive)).size,
-  runCount: result.runCount,
-  fileCount: result.fileCount,
-  revision: result.revision,
-};
 await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+await writeFile(
+  join(output, "published-history.json"),
+  JSON.stringify(manifest, null, 2) + "\n",
+);
 console.log(
-  `Prepared ${result.runCount} runs in ${archive}; review the manifest before publishing.`,
+  `Prepared ${manifest.months.length} monthly packages and a catalog for ${manifest.runCount} runs in ${output}. Review before publishing.`,
 );
