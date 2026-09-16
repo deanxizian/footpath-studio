@@ -45,7 +45,7 @@ pnpm build:history
 pnpm preview
 ```
 
-`Daily Stryd Footpath` Action 每天北京时间 **06:20** 检查已上传的 Footpath，也可以手动运行。有变化时，只更新对应月份 Release 和网站目录，再通过 Vercel Deploy Hook 发布网页。没有变化时，通常只检查同步状态；如果上次部署未完成，会重试部署。**数据自动化不创建 commit、分支或 PR**；应用代码的更改仍通过 PR、CI 与代码审查。配置方法见 [自动抓取](docs/stryd-sync.md)。
+`Daily Stryd Footpath` Action 每天北京时间 **06:20** 使用 Secrets 中的账号密码登录并检查已上传的 Footpath，也可以手动运行。登录令牌只保留在本次运行内存中；Cache 只保存可重建的抓取进度。有变化时，只更新对应月份 Release 和网站目录，再通过 Vercel Deploy Hook 发布网页。没有变化时，通常只检查同步状态；如果上次部署未完成，会重试部署。**数据自动化不创建 commit、分支或 PR**；应用代码的更改仍通过 PR、CI 与代码审查。配置方法见 [自动抓取](docs/stryd-sync.md)。
 
 ## 项目目录
 
@@ -53,7 +53,7 @@ pnpm preview
 src/                   网页、三维渲染、数据模型和合成示例
 tests/                 数据完整性和分析行为测试
 scripts/               历史快照打包、校验与构建检查
-scripts/stryd/          可选的账号抓取与加密会话管理
+scripts/stryd/          可选的账号登录、抓取与进度缓存
 docs/                  分析方法、格式和部署文档
 .github/               PR 模板、无密钥 CI 和受保护的每日抓取
 history-source.json    稳定的数据来源配置（动态清单保存在 Release）

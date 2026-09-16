@@ -15,7 +15,7 @@ on:
         type: boolean
         default: false
       refresh_session:
-        description: 'Validate session rotation and encrypted persistence'
+        description: 'Also test token refresh within this run'
         type: boolean
         default: false
       deploy_site:
@@ -48,16 +48,29 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
-      - run: python -m pip install -r scripts/stryd/requirements.txt
+      - name: Restore optional fetch progress (no credentials)
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        continue-on-error: true
+        with:
+          path: .cache/stryd-checks.json
+          key: stryd-checks-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: stryd-checks-v1-
       - name: Update monthly Releases and refresh the website
         run: python scripts/stryd/sync.py
         env:
           GH_TOKEN: ${{ github.token }}
-          STRYD_AUTH_KEY: ${{ secrets.STRYD_AUTH_KEY }}
-          STRYD_STATE_RELEASE_ID: ${{ vars.STRYD_STATE_RELEASE_ID }}
+          STRYD_EMAIL: ${{ secrets.STRYD_EMAIL }}
+          STRYD_PASSWORD: ${{ secrets.STRYD_PASSWORD }}
           MAX_DOWNLOADS: ${{ inputs.max_downloads || '100' }}
           RECHECK_ALL: ${{ inputs.recheck_all && 'true' || 'false' }}
           REFRESH_SESSION: ${{ inputs.refresh_session && 'true' || 'false' }}
           VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
           STRYD_SITE_URL: ${{ vars.STRYD_SITE_URL }}
           DEPLOY_SITE: ${{ inputs.deploy_site && 'true' || 'false' }}
+      - name: Save optional fetch progress (no credentials)
+        if: ${{ always() && !cancelled() && hashFiles('.cache/stryd-checks.json') != '' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        continue-on-error: true
+        with:
+          path: .cache/stryd-checks.json
+          key: stryd-checks-v1-${{ github.run_id }}-${{ github.run_attempt }}

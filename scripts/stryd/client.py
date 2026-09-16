@@ -97,30 +97,53 @@ def numeric_id(value):
 
 
 class Stryd:
-    def __init__(self, session, on_refresh, http=None):
+    def __init__(self, session, http=None):
         self.session = dict(session)
-        self.on_refresh = on_refresh
         self.http = http or HTTP()
+
+    @classmethod
+    def login(cls, email, password, http=None):
+        if not isinstance(email, str) or not email.strip() or not isinstance(password, str) or not password:
+            raise SyncError('Configure the STRYD_EMAIL and STRYD_PASSWORD Actions secrets')
+        http = http or HTTP()
+        # A password login is attempted once per run, never retried after an
+        # uncertain response. Only this HTTPS request receives the password.
+        reply = http.request('POST', API + '/b/email/signin',
+            json_body={'email': email.strip(), 'password': password}, retry=False)
+        if reply.status in (401, 403):
+            raise SyncError('Stryd password login denied; check the account credentials or required verification')
+        data = as_json(reply, 'Stryd password login')
+        try:
+            # Password sign-in uses flat fields; the refresh endpoint below
+            # returns a different, nested representation.
+            session = {key: data[field] for key, field in (
+                ('user_id', 'id'), ('access_token', 'token'),
+                ('refresh_token', 'refresh_token'), ('client_id', 'client_id'))}
+            if not all(isinstance(value, str) and value for value in session.values()):
+                raise ValueError()
+        except (KeyError, TypeError, ValueError):
+            raise SyncError('Stryd returned an unrecognized login session format') from None
+        return cls(session, http)
 
     def refresh(self):
         try:
             self._refresh()
         except SyncError as error:
-            # Callers must stop the whole scan even when the underlying failure
-            # comes from GitHub persistence or an uncertain network response.
-            raise SyncError('Stryd session refresh/persistence failed: ' + str(error)) from None
+            # Stop this run after an uncertain refresh response. The next run
+            # can authenticate from the password without any saved session.
+            raise SyncError('Stryd session refresh failed: ' + str(error)) from None
         except Exception:
-            raise SyncError('Stryd session refresh/persistence failed; reconnect using docs/stryd-sync.md') from None
+            raise SyncError('Stryd session refresh failed; retry the workflow to sign in again') from None
 
     def _refresh(self):
         if not self.session.get('refresh_token') or not self.session.get('client_id'):
-            raise SyncError('Stryd session expired. Reconnect Stryd using docs/stryd-sync.md.')
+            raise SyncError('Stryd session expired; retry the workflow to sign in again')
         # Refresh tokens may rotate. Never retry this POST after an uncertain response.
         reply = self.http.request('POST', API + '/b/token/refresh',
             {'Authorization': 'Bearer: ' + self.session['access_token'], 'Client-ID': self.session['client_id']},
             json_body={'refresh_token': self.session['refresh_token'], 'user_id': self.session['user_id']}, retry=False)
         if reply.status in (401, 403):
-            raise SyncError('Stryd session can no longer refresh. Reconnect Stryd using docs/stryd-sync.md.')
+            raise SyncError('Stryd session can no longer refresh; retry the workflow to sign in again')
         data = as_json(reply, 'Stryd session refresh')
         try:
             updated = {**self.session, 'access_token': data['access_token'], 'refresh_token': data['refresh_token']['token'], 'client_id': data['refresh_token']['client']['id']}
@@ -129,7 +152,6 @@ class Stryd:
         except (KeyError, TypeError):
             raise SyncError('Stryd returned an unrecognized session format') from None
         self.session = updated
-        self.on_refresh(updated)
 
     def get(self, path):
         reply = self.http.request('GET', API + path, {'Authorization': 'Bearer: ' + self.session['access_token']})

@@ -1,15 +1,17 @@
 import datetime as dt
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+import urllib.error
+import urllib.request
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts/stryd'))
-from auth import AUTH_TAG, StateStore, decrypt, encrypt, new_key
-from client import Reply, Stryd, SyncError, UTC
-from sync import synchronize
+from client import Reply, SafeRedirect, Stryd, SyncError, UTC
+from sync import synchronize, node
 from transform import pack_run, digest
 
 SESSION = dict(user_id='test-user', access_token='test-access', refresh_token='test-refresh', client_id='test-client')
@@ -120,20 +122,14 @@ class FetchTests(unittest.TestCase):
         self.assertEqual(len(result['failed']), 1)
         self.assertEqual(len(source.calls), 1)
 
-    def test_refresh_network_or_storage_failure_stops_the_whole_scan(self):
-        rotated = reply({'access_token': 'rotated', 'refresh_token': {'token': 'r', 'client': {'id': 'c'}}})
-        for refresh_reply in [SyncError('Network request failed'), rotated]:
-            http = FakeHTTP([Reply(401, b'', {}), refresh_reply])
-            def fail(_):
-                raise SyncError('GitHub asset upload returned HTTP 503')
-            source = Stryd(SESSION, fail, http)
-            source.calendar = lambda: [activity(1), activity(2)]
-            result = synchronize(source, {}, {'runs': []}, self.directory, now=NOW)
-            self.assertEqual(len(result['failed']), 1)
-            self.assertIn('session', result['failed'][0]['reason'])
-            # Do not try another refresh via the next activity after an uncertain
-            # POST, or use the rotated token before persistence has succeeded.
-            self.assertEqual(len(http.calls), 2)
+    def test_uncertain_refresh_stops_the_whole_scan(self):
+        http = FakeHTTP([Reply(401, b'', {}), SyncError('Network request failed')])
+        source = Stryd(SESSION, http)
+        source.calendar = lambda: [activity(1), activity(2)]
+        result = synchronize(source, {}, {'runs': []}, self.directory, now=NOW)
+        self.assertEqual(len(result['failed']), 1)
+        self.assertIn('session', result['failed'][0]['reason'])
+        self.assertEqual(len(http.calls), 2)
 
     def test_geometry_rejects_mismatched_run_and_preserves_coordinates(self):
         act = activity()
@@ -146,99 +142,89 @@ class FetchTests(unittest.TestCase):
 
 
 class SessionTests(unittest.TestCase):
-    def test_refresh_persists_before_authenticated_retry(self):
+    def test_redirects_never_forward_password_or_cross_host_authentication(self):
+        redirect = SafeRedirect()
+        request = urllib.request.Request('https://api.stryd.com/b/email/signin',
+            data=b'{"password":"sensitive-password"}', method='POST',
+            headers={'Authorization': 'sensitive-token', 'Client-ID': 'sensitive-client',
+                     'Cookie': 'sensitive-cookie', 'Content-Type': 'application/json'})
+        for status in (301, 302, 303):
+            forwarded = redirect.redirect_request(request, None, status, '', {}, 'https://other.example/path')
+            self.assertEqual(forwarded.get_method(), 'GET')
+            self.assertIsNone(forwarded.data)
+            self.assertFalse({'authorization', 'client-id', 'cookie'} &
+                             {name.lower() for name in forwarded.headers})
+        for status in (307, 308):
+            with self.assertRaises(urllib.error.HTTPError):
+                redirect.redirect_request(request, None, status, '', {}, 'https://other.example/path')
+        with self.assertRaisesRegex(SyncError, 'HTTPS redirect required'):
+            redirect.redirect_request(request, None, 302, '', {}, 'http://api.stryd.com/path')
+
+    def test_password_login_uses_the_flat_response_and_preserves_password(self):
+        password = '  special # $ password  '
+        http = FakeHTTP([reply({'id': 'test-user', 'token': 'test-access',
+            'refresh_token': 'test-refresh', 'client_id': 'test-client'})])
+        source = Stryd.login(' test@example.invalid ', password, http)
+        self.assertEqual(source.session, SESSION)
+        args, options = http.calls[0]
+        self.assertEqual(args[:2], ('POST', 'https://api.stryd.com/b/email/signin'))
+        self.assertEqual(options['json_body'], {'email': 'test@example.invalid', 'password': password})
+        self.assertFalse(options['retry'])
+        self.assertNotIn(password, json.dumps(source.session))
+
+    def test_missing_credentials_do_not_attempt_login(self):
+        for email, password in [(None, 'password'), ('user', None), (' ', 'password'), ('user', '')]:
+            http = FakeHTTP([])
+            with self.assertRaisesRegex(SyncError, 'STRYD_EMAIL and STRYD_PASSWORD'):
+                Stryd.login(email, password, http)
+            self.assertEqual(http.calls, [])
+
+    def test_login_errors_do_not_log_response_or_retry(self):
+        for response in [Reply(401, b'sensitive-response-token', {}),
+                         Reply(403, b'sensitive-response-token', {}),
+                         Reply(429, b'sensitive-response-token', {}),
+                         reply({'error': 'sensitive-response-token'}),
+                         reply({'id': 'user', 'token': 'sensitive-response-token',
+                                'refresh_token': {'token': 'unexpected-nested-format'}, 'client_id': 'client'})]:
+            http = FakeHTTP([response])
+            with self.assertRaises(SyncError) as error:
+                Stryd.login('user@example.invalid', 'sensitive-password', http)
+            self.assertNotIn('sensitive', str(error.exception))
+            self.assertEqual(len(http.calls), 1)
+            self.assertFalse(http.calls[0][1]['retry'])
+
+    def test_refresh_updates_memory_before_authenticated_retry(self):
         http = FakeHTTP([Reply(401, b'', {}), reply({'access_token': 'rotated',
             'refresh_token': {'token': 'new-refresh', 'client': {'id': 'new-client'}}}), reply({'ok': True})])
-        def save(session):
-            self.assertEqual(len(http.calls), 2)
-            self.assertEqual(session['refresh_token'], 'new-refresh')
-        Stryd(SESSION, save, http).get('/test')
+        source = Stryd(SESSION, http)
+        source.get('/test')
+        self.assertEqual(source.session['refresh_token'], 'new-refresh')
         self.assertFalse(http.calls[1][1]['retry'])
         self.assertEqual(http.calls[2][0][2]['Authorization'], 'Bearer: rotated')
 
     def test_refresh_failure_does_not_log_body_or_retry(self):
         http = FakeHTTP([Reply(403, b'secret-refresh-value', {})])
         with self.assertRaisesRegex(SyncError, 'no longer refresh') as result:
-            Stryd(SESSION, lambda _: None, http).refresh()
+            Stryd(SESSION, http).refresh()
         self.assertNotIn('secret-refresh-value', str(result.exception))
         self.assertEqual(len(http.calls), 1)
 
-    def test_persist_failure_stops_before_retry(self):
-        http = FakeHTTP([Reply(401, b'', {}), reply({'access_token': 'rotated',
-            'refresh_token': {'token': 'r', 'client': {'id': 'c'}}})])
-        def fail(_):
-            raise SyncError('session persistence failed')
-        with self.assertRaisesRegex(SyncError, 'persistence'):
-            Stryd(SESSION, fail, http).get('/test')
-        self.assertEqual(len(http.calls), 2)
-
-    def test_authenticated_encryption_and_no_plaintext(self):
-        key, state = new_key(), {'session': SESSION, 'checks': {}}
-        envelope = encrypt(state, key)
-        self.assertNotIn(SESSION['access_token'].encode(), envelope)
-        self.assertEqual(decrypt(envelope, key), state)
-        self.assertNotEqual(envelope, encrypt(state, key))
-        with self.assertRaises(SyncError):
-            decrypt(envelope, new_key())
-
-    def test_public_or_wrong_release_is_never_used(self):
-        class Git:
-            def call(self, *args):
-                return dict(draft=False, tag_name=AUTH_TAG)
-        store = StateStore(Git(), 123, new_key())
-        for operation in [store.load, lambda: store.save({'session': SESSION})]:
-            with self.assertRaisesRegex(SyncError, 'unpublished draft'):
-                operation()
-
-    def test_newest_incomplete_state_never_falls_back(self):
-        class Git:
-            def call(self, *args):
-                return dict(draft=True, tag_name=AUTH_TAG)
-            def pages(self, *args):
-                return [dict(id=1, name='state-1.enc.json', state='uploaded'),
-                        dict(id=2, name='state-2.enc.json', state='starter')]
-        with self.assertRaisesRegex(SyncError, 'incomplete'):
-            StateStore(Git(), 123, new_key()).load()
-
-    def test_state_retention_only_prunes_after_successful_readback(self):
-        key = new_key()
-        old_state = {'session': SESSION, 'checks': {}}
-        new_state = {'session': {**SESSION, 'access_token': 'rotated'}, 'checks': {}}
-        class Git:
-            def __init__(self, corrupt=False):
-                self.data = {i: encrypt(old_state, key) for i in range(1, 26)}
-                self.deleted, self.corrupt = [], corrupt
-            def call(self, method, path, **kwargs):
-                if method == 'DELETE':
-                    # The newest state must already be durable when deletion begins.
-                    self.assert_latest = decrypt(self.data[max(self.data)], key)
-                    identifier = int(path.rsplit('/', 1)[1])
-                    self.deleted.append(identifier)
-                    del self.data[identifier]
-                    return None
-                return dict(draft=True, tag_name=AUTH_TAG)
-            def pages(self, path):
-                return [dict(id=i, name=f'state-{i}.enc.json', state='uploaded') for i in self.data]
-            def upload(self, release_id, name, content, content_type):
-                self.data[max(self.data) + 1] = content
-            def asset(self, identifier):
-                return b'invalid encrypted state' if self.corrupt else self.data[identifier]
-        github = Git()
-        StateStore(github, 123, key).save(new_state)
-        self.assertEqual(len(github.data), 20)
-        self.assertEqual(github.deleted, [6, 5, 4, 3, 2, 1])
-        self.assertEqual(github.assert_latest, new_state)
-        self.assertEqual(decrypt(github.data[26], key), new_state)
-        broken = Git(corrupt=True)
-        with self.assertRaises(SyncError):
-            StateStore(broken, 123, key).save(new_state)
-        self.assertEqual(broken.deleted, [])
+    def test_build_subprocess_never_receives_account_credentials(self):
+        secrets = {'STRYD_EMAIL': 'test-email', 'STRYD_PASSWORD': 'test-password',
+                   'GH_TOKEN': 'test-gh', 'GITHUB_TOKEN': 'test-github',
+                   'VERCEL_DEPLOY_HOOK': 'test-hook'}
+        with patch.dict(os.environ, {**secrets, 'PATH': '/test/path'}), patch('sync.subprocess.run') as run:
+            run.return_value.returncode = 0
+            node('scripts/pack-public-history.mjs')
+            environment = run.call_args.kwargs['env']
+            self.assertTrue(all(key not in environment for key in secrets))
+            self.assertEqual(environment['PATH'], '/test/path')
 
     def test_calendar_cursor_and_late_pages(self):
         older, newer = activity(1, days=200), activity(2)
         http = FakeHTTP([reply({'activities': [newer]}), reply({'activities': [newer]}),
                          reply({'activities': [older]}), reply({'activities': [older]}), reply({'activities': None})])
-        runs = Stryd(SESSION, lambda _: None, http).calendar()
+        runs = Stryd(SESSION, http).calendar()
         self.assertEqual([a['id'] for a in runs], [1, 2])
         self.assertIn('from=1&to=', http.calls[2][0][1])
 

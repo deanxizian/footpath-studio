@@ -42,4 +42,4 @@ pnpm exec vite build --mode public-history
 node scripts/check-public-release.mjs --history
 ```
 
-发布前应校验全部附件。日常发布使用 [每日自动抓取](stryd-sync.md) 中的流程，凭据草稿始终保持未发布。只分析某个月时，可以单独下载月包；不要将多个月包直接解压到同一目录覆盖各自的 `version.json`。月包不是“导入 JSON”按钮接受的原始 JSON 文件。
+发布前应校验全部附件。日常发布使用 [每日自动抓取](stryd-sync.md) 中的流程；账号密码仅保存在 Actions Secrets 中。只分析某个月时，可以单独下载月包；不要将多个月包直接解压到同一目录覆盖各自的 `version.json`。月包不是“导入 JSON”按钮接受的原始 JSON 文件。

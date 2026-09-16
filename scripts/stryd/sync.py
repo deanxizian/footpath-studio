@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 
-from auth import StateStore
+from checkpoints import load_checks, save_checks
 from client import Stryd, SyncError, UTC, numeric_id
 from github import GitHub
 from publication import latest_manifest, publish, deploy_site
@@ -20,6 +20,7 @@ from transform import FIELDS, SITE_FORMAT, TRANSFORM_VERSION, compact, compress,
 
 ROOT = Path(__file__).resolve().parents[2]
 WORK = ROOT / '.cache/stryd-sync'
+CHECKS = ROOT / '.cache/stryd-checks.json'
 ACTIVITY_FIELDS = ('id', 'name', 'timestamp', 'foot_data_id', 'moving_time', 'distance',
                    'average_speed', 'surface_type', 'recording_mode', 'apparel_ids')
 
@@ -116,7 +117,7 @@ def synchronize(stryd, state, history, directory, maximum=100, recheck_all=False
 
 def node(*args):
     # Build/pack subprocesses have no need to see account credentials.
-    env = {k: v for k, v in os.environ.items() if k not in ('STRYD_AUTH_KEY', 'GH_TOKEN', 'GITHUB_TOKEN', 'VERCEL_DEPLOY_HOOK')}
+    env = {k: v for k, v in os.environ.items() if k not in ('STRYD_EMAIL', 'STRYD_PASSWORD', 'GH_TOKEN', 'GITHUB_TOKEN', 'VERCEL_DEPLOY_HOOK')}
     result = subprocess.run(['node', *args], cwd=ROOT, env=env)
     if result.returncode:
         raise SyncError('History verification or packaging failed')
@@ -150,14 +151,14 @@ def main():
     checkout = os.environ.get('GITHUB_SHA') or subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     check_main = lambda: require_current_main(github, checkout)
     check_main()
-    store = StateStore(github, os.environ.get('STRYD_STATE_RELEASE_ID'), os.environ.get('STRYD_AUTH_KEY'))
-    state = store.load()
-    def persist(session):
-        state['session'] = session
-        store.save(state)
-    stryd = Stryd(state['session'], persist)
+    # Cache is optional progress only. Every run creates its own in-memory
+    # session, so a lost cache never requires exporting a browser login again.
+    state = load_checks(CHECKS)
+    stryd = Stryd.login(os.environ.get('STRYD_EMAIL'), os.environ.get('STRYD_PASSWORD'))
+    print('Stryd password login succeeded; session remains in memory.', flush=True)
     if os.environ.get('REFRESH_SESSION') == 'true':
         stryd.refresh()
+        print('Stryd in-memory session refresh verified.', flush=True)
     baseline = latest_manifest(github)
     shutil.rmtree(WORK, ignore_errors=True)
     WORK.mkdir(parents=True)
@@ -171,7 +172,10 @@ def main():
         result = synchronize(stryd, state, read_history(catalog / 'data'), updates,
             maximum, os.environ.get('RECHECK_ALL') == 'true')
     finally:
-        store.save(state)
+        try:
+            save_checks(CHECKS, state)
+        except (OSError, ValueError):
+            print('Check progress could not be cached; the next run will rebuild it.', flush=True)
     if result['new'] or result['revised']:
         history = WORK / 'history'
         node('scripts/fetch-public-history.mjs', '--manifest', str(baseline_file), '--target', str(history))
@@ -195,6 +199,7 @@ def main():
     safe = {k: v for k, v in result.items() if k != 'failed'}
     print(json.dumps(safe))
     summary = ['## Daily Stryd Footpath sync', '',
+        '- Authentication: fresh password login; session tokens kept only in memory.',
         f'- Calendar: {result["activities"]} activities; {result["uploaded"]} with uploaded Footpath.',
         f'- New / revised / unchanged: {result["new"]} / {result["revised"]} / {result["unchanged"]}.',
         f'- Archived total: {result["total"]}; not archived: {result["not_archived"]}.',

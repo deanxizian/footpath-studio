@@ -4,8 +4,8 @@
 
 ## 数据流程
 
-1. 从已审阅的 `main` 执行代码，只使用受保护的 `stryd-sync` 环境凭据。
-2. 从最新月份 Release 读取完整历史目录与总索引，校验来源、附件摘要及内容。不读写任何数据 PR 或数据分支。
+1. 从已审阅的 `main` 执行代码，进入受保护的 `stryd-sync` 环境；使用邮箱和密码登录 Stryd，令牌只保存在本次进程内存中。
+2. 恢复可丢弃的抓取进度缓存；从最新月份 Release 读取完整历史目录与总索引，校验来源、附件摘要及内容。不读写任何数据 PR 或数据分支。
 3. 分页扫描全部 Stryd 日历，因此旧活动今天才上传的 Footpath 也能被发现。下载新记录，重查最近 14 天的已归档记录。上游尚未处理完成的记录下次重试；每次默认最多检查 100 份，可手动设为 1–500，并启用 `recheck_all` 检查更早记录。
 4. 新增或修订记录通过原始内容摘要去重。没有数据变化时，不下载完整历史、不更新月份数据包。
 5. 有变化时校验并合并历史，在临时目录准备全部月份包，只上传变化或需要修复的包。每月固定一个 `footpath-YYYY-MM` Release，新月份才创建 Release。全部上传成功后更新最新月份的总目录，未变化的包复用原固定 URL 和 SHA-256；保留本地包用于恢复缺失或损坏的远端附件。
@@ -15,49 +15,39 @@
 
 上传中断遗留的残件会在确认本地替代包完整后清理重传，已验证的附件保留不变。如果同步期间 `main` 更新，任务会在发布目录或触发部署前停止，后续运行使用新的 `main` 重试。
 
-## 凭据保存
+## 登录与缓存
 
-- AES-256-GCM 解密密钥只在 `stryd-sync` 环境的 `STRYD_AUTH_KEY` Secret 中。
-- 轮换会话保存在标签为 `stryd-sync-state` 的**未发布 Release 草稿**附件中，内容额外进行 AES-GCM 加密。不进入 Git、公开月包、构建产物、缓存或日志。
-- GitHub 将 Release 草稿限制为具有写入权限的用户可见；初始化还会检查匿名读取返回 404。见 [GitHub Release API 文档](https://docs.github.com/en/rest/releases/releases#list-releases)。此草稿必须一直保持未发布状态，代码每次读取和保存都会检查。
-- 每次令牌刷新后，立即上传新的加密状态并读回验证，再继续请求。状态按附件 ID 读取最新版本；不回退到旧的刷新令牌。会话刷新 POST 遇到不确定响应时不重试。
-- 仅在新状态读回验证成功后清理旧附件，保留最近 20 份加密备份，避免长期运行达到 Release 附件数量上限。保存或验证失败时不删除旧备份。
-- 工作流全局串行，运行中的任务不会被下一次定时任务取消；环境只允许受保护的分支。只有 `main` 可以执行抓取任务，PR 的 CI 不读取凭据。
-- GitHub API 使用该次运行的短期 `GITHUB_TOKEN`，不需要额外保存长期 GitHub PAT。工作流仅授予 `contents: write`，用于 Release 和附件；不授予 PR 或 Actions 写入权限，也没有 Git commit 或 PR 写入逻辑。
+- 每次运行用 `STRYD_EMAIL`、`STRYD_PASSWORD` 登录。密码只发送给 Stryd 的 HTTPS 邮箱登录接口；账号密码和令牌不写入日志、Git、Release、缓存或构建产物。
+- 邮箱密码登录返回 `token`、`refresh_token`、`client_id`、`id`。运行中遇到 401 时，用内存中的刷新令牌续期，随后重试该读取请求一次。登录及刷新请求不自动重试；响应不确定或需要额外验证时停止本次运行，下次运行重新登录。
+- 构建和打包子进程的环境会移除 Stryd 账号密码、GitHub Token 和 Vercel Hook。PR 的 CI 使用合成数据，不读取这些凭据。
+- Actions Cache **仅缓存** `.cache/stryd-checks.json`：Footpath ID、检查/尝试时间、ETag、原始数据摘要。写入时按字段白名单重新构造 JSON，不保存任何会话字段。
+- 缓存按运行 ID 和重试次数生成新 key；恢复最近的检查进度，以避免已检查项目或尚未处理好的旧记录占满下载额度。缓存缺失、过期或损坏时重建进度；不影响重新登录或 Release 中的历史数据。缓存读写失败不会阻止数据同步。
+- Cache 可被有读取权限的工作流访问，不作为凭据存储。参见 [GitHub Cache 说明](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)。
+- 工作流串行运行，只有 `main` 可以登录和抓取。`stryd-sync` 环境应仅允许受保护分支部署。
+- GitHub API 使用本次运行的短期 `GITHUB_TOKEN`，只授予 `contents: write` 用于月份 Release；不需要额外的 GitHub PAT，不授予 PR 或 Actions 写入权限。
 
-不要发布或删除凭据草稿。若状态损坏、刷新失效或上游登录撤销，重新连接账号。账户会话可能失效，自动化不能保证永久免登录。
+## 配置
 
-## 首次连接 / 重新连接
-
-需要 Python 3.13、已登录的 GitHub CLI，以及你自己的 Stryd PowerCenter 登录会话。重新连接前，等待已有抓取运行结束；脚本会检查运行状态。
-
-```sh
-python -m venv .venv
-.venv/bin/pip install -r scripts/stryd/requirements.txt
-.venv/bin/python scripts/stryd/bootstrap.py prepare
-```
-
-在已登录的 Stryd PowerCenter 页面 DevTools Console 中运行本机生成的 `.local/stryd/browser-export.js`。它只下载 RSA-OAEP + AES-GCM 加密的 `stryd-bootstrap.enc.json`，不打印令牌，也不修改浏览器登录状态。然后运行：
-
-```sh
-.venv/bin/python scripts/stryd/bootstrap.py install \
-  --repo OWNER/REPO \
-  --envelope ~/Downloads/stryd-bootstrap.enc.json \
-  --private-key .local/stryd/bootstrap-private.pem
-```
-
-安装会创建受保护的 `stryd-sync` 环境、私有可见的加密草稿状态，设置以下配置并验证真实刷新及持久化。脚本不输出 GitHub Token、Stryd 令牌或加密密钥。
+在 GitHub **Settings → Secrets and variables → Actions** 设置以下内容。建议把凭据放在受保护的 `stryd-sync` 环境中；工作流也支持同名的仓库 Secrets。仅将有权公开的数据用于本项目的公共月份 Releases。
 
 | 配置 | 类型 | 用途 |
 | --- | --- | --- |
-| `STRYD_AUTH_KEY` | 环境 Secret | 解密会话状态 |
-| `VERCEL_DEPLOY_HOOK` | 环境 Secret | 触发 `main` 的 Vercel 构建 |
-| `STRYD_SITE_URL` | 仓库 Variable | 公开生产站的 HTTPS 根地址，用于核对数据版本 |
-| `STRYD_STATE_RELEASE_ID` | 仓库 Variable | 凭据草稿的 ID |
+| `STRYD_EMAIL` | Secret | Stryd 账号邮箱 |
+| `STRYD_PASSWORD` | Secret | Stryd 账号密码 |
+| `VERCEL_DEPLOY_HOOK` | `stryd-sync` 环境 Secret | 触发 `main` 的 Vercel 构建 |
+| `STRYD_SITE_URL` | 仓库 Variable | 公开生产站 HTTPS 根地址，用于核对数据版本 |
 | `STRYD_SYNC_ENABLED` | 仓库 Variable | `true` 启用，`false` 暂停 |
 
-在 Vercel 项目的 **Settings → Git → Deploy Hooks** 创建绑定 `main` 的 Hook，将地址保存为 `stryd-sync` 环境的 `VERCEL_DEPLOY_HOOK` Secret；将公开网站根地址保存为仓库变量 `STRYD_SITE_URL`。Hook 地址具有触发部署的能力，应作为 Secret 保存。Vercel 仍使用 `pnpm build:history` 构建。
+创建 `stryd-sync` 环境并限制部署分支为受保护的 `main`。在 Vercel 项目的 **Settings → Git → Deploy Hooks** 创建绑定 `main` 的 Hook，将地址保存为上面的 Secret。Vercel 仍使用 `pnpm build:history` 构建，不接收 Stryd 账号密码。
 
-不需要开启 **Allow GitHub Actions to create and approve pull requests**。保留 `main` 的 PR、CI 和审阅对话保护。在 Actions 手动运行一次，确认抓取摘要和网页版本。可选 `refresh_session` 测试令牌刷新及加密持久化；`deploy_site` 在没有新数据时也请求一次网页重建。
+在 Actions 手动运行 `Daily Stryd Footpath`，可设置 `max_downloads=1` 做小规模验证；`refresh_session=true` 同时验证本次内存会话续期，`deploy_site=true` 在没有新数据时也请求一次网页重建。确认运行成功后保持每日同步开启。
 
-新建个人仓库时，还需要自己的初始月份 Releases、`history-source.json` 仓库配置和公开数据授权。直接 fork 本项目不会获得维护者账号、Secret 或自动开启同步。
+`STRYD_AUTH_KEY`、`STRYD_STATE_RELEASE_ID` 和 `stryd-sync-state` 草稿属于旧的浏览器会话方案。升级并验证邮箱密码登录成功后，可以删除这两项配置及对应草稿。现在不需要浏览器会话导出脚本或加密依赖。
+
+抓取器仅使用 Python 标准库。开发验证：
+
+```sh
+python -m unittest discover -s tests/stryd -v
+```
+
+本地 `.env` 已被 Git 忽略，仅供本地测试；工作流直接读取 GitHub Secrets，不上传或读取 `.env`。密码变更后更新对应 Secret。直接 fork 本项目不会获得维护者账号或 Secret，也不会自动开启同步；还需自己的初始月份 Releases、`history-source.json` 仓库配置和公开数据授权。
