@@ -1,4 +1,5 @@
 export const COLORS = { left: "#ff981f", right: "#3d91ff", ink: "#edf0f4" };
+export const CENTIMETERS_PER_METER = 100;
 
 export function normalizeData(input, fileName = "Stryd Footpath") {
   const packed = input?.format === "footpath-studio-v1";

@@ -3,7 +3,15 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Line2 } from "three/addons/lines/Line2.js";
 import { LineGeometry } from "three/addons/lines/LineGeometry.js";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
-import { COLORS, lineSegmentPositions, plotPoint } from "./model.js";
+import {
+  COLORS,
+  CENTIMETERS_PER_METER,
+  lineSegmentPositions,
+  plotPoint,
+} from "./model.js";
+
+const coordinateTick = (value) =>
+  Number((value * CENTIMETERS_PER_METER).toFixed(2)).toString();
 
 function disposeGroup(group) {
   group.traverse((o) => {
@@ -41,7 +49,7 @@ function label(text, position, size = 0.028, dimension = "") {
   sprite.position.set(...position);
   sprite.scale.set((size * 256) / 96, size, 1);
   sprite.userData.axisLabel = true;
-  sprite.userData.isAxisName = /^[XYZ]$/.test(text);
+  sprite.userData.isAxisName = /^[XYZ](?: \(cm\))?$/.test(text);
   sprite.userData.dimension = dimension;
   return sprite;
 }
@@ -230,30 +238,25 @@ export class FootpathScene {
     line([0, 0, lower[2]], [0, 0, upper[2] + gridStep * 0.25]);
     const fontSize = extent * 0.045;
     this.grid.add(
-      label("X", [upper[0] + gridStep * 0.3, 0, 0], fontSize * 1.3, "x"),
+      label("X (cm)", [upper[0] + gridStep * 0.3, 0, 0], fontSize * 1.3, "x"),
     );
     this.grid.add(
-      label("Y", [0, upper[1] + gridStep * 0.3, 0], fontSize * 1.3, "y"),
+      label("Y (cm)", [0, upper[1] + gridStep * 0.3, 0], fontSize * 1.3, "y"),
     );
     this.grid.add(
-      label("Z", [0, 0, upper[2] + gridStep * 0.45], fontSize * 1.3, "z"),
+      label("Z (cm)", [0, 0, upper[2] + gridStep * 0.45], fontSize * 1.3, "z"),
     );
     for (let z = gridStep; z <= upper[2] + 1e-8; z += gridStep) {
       line([0, 0, z], [gridStep * 0.1, 0, z]);
       this.grid.add(
-        label(
-          Number(z.toFixed(4)).toString(),
-          [gridStep * 0.36, 0, z],
-          fontSize,
-          "z",
-        ),
+        label(coordinateTick(z), [gridStep * 0.36, 0, z], fontSize, "z"),
       );
     }
     // All three axes use the same coordinate increment.
     for (let x = lower[0]; x <= upper[0] + 1e-8; x += gridStep) {
       this.grid.add(
         label(
-          Number(x.toFixed(4)).toString(),
+          coordinateTick(x),
           [x, lower[1] - gridStep * 0.23, 0],
           fontSize,
           "x",
@@ -268,7 +271,7 @@ export class FootpathScene {
       )
         this.grid.add(
           label(
-            Number(y.toFixed(4)).toString(),
+            coordinateTick(y),
             [upper[0] + gridStep * 0.35, y, 0],
             fontSize,
             "y",

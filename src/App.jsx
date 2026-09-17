@@ -24,6 +24,7 @@ import {
   HistoryPlot,
   PacePlot,
   valueText,
+  metricText,
   signedText,
 } from "./AnalysisCharts.jsx";
 
@@ -58,12 +59,12 @@ function FootCell({ current, baseline, metric, side }) {
   const change = percentage(current.mean, baseline.mean);
   return (
     <td className={`foot-cell ${side === 1 ? "foot-left" : "foot-right"}`}>
-      <strong>{valueText(current.mean, metric.digits)}</strong>
+      <strong>{metricText(current.mean, metric)}</strong>
       {Number.isFinite(change) && (
         <span className="cell-change">{pct(change)}</span>
       )}
       <small title={`${baseline.n} 次跑步；当前 ${current.n} 个有效片段`}>
-        基准 {valueText(baseline.mean, metric.digits)}
+        基准 {metricText(baseline.mean, metric)}
       </small>
     </td>
   );
@@ -135,8 +136,8 @@ function TrendSummary({ changes, metric, days }) {
                   : "样本不足"}
             </strong>
             <small>
-              {valueText(changes[side].before.mean, metric.digits)} →{" "}
-              {valueText(changes[side].after.mean, metric.digits)}
+              {metricText(changes[side].before.mean, metric)} →{" "}
+              {metricText(changes[side].after.mean, metric)} {metric.unit}
             </small>
           </div>
         ))}
@@ -206,8 +207,7 @@ function FootBalance({ summary, baseline, baselineLabel, metric }) {
         {Number.isFinite(current.delta) && (
           <>
             {" "}
-            · 相差 {valueText(Math.abs(current.delta), metric.digits)}{" "}
-            {metric.unit}
+            · 相差 {metricText(Math.abs(current.delta), metric)} {metric.unit}
           </>
         )}
       </p>

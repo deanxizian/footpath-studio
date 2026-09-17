@@ -1,10 +1,21 @@
 import { METRICS } from "./trends.js";
+import { CENTIMETERS_PER_METER } from "./model.js";
 
 export const DAY = 86400;
 export const BASELINE_DAYS = 90;
 export const BASELINE_WINDOWS = [30, 60, 90, 180, 365];
 export const MIN_OBSERVATIONS = 3;
-export const ANALYSIS_METRICS = METRICS;
+// Keep archive values and calculations in meters; convert only display text.
+export const ANALYSIS_METRICS = METRICS.map((metric) =>
+  metric.unit === "m"
+    ? {
+        ...metric,
+        unit: "cm",
+        digits: 2,
+        displayScale: CENTIMETERS_PER_METER,
+      }
+    : metric,
+);
 const finite = Number.isFinite;
 const mean = (values) =>
   values.length
