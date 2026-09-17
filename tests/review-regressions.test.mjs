@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { OrthographicCamera, Vector3 } from "three";
+import { Group, OrthographicCamera, Vector3 } from "three";
 import { createDemoRun } from "../src/demo.js";
 import {
   runFromRaw,
@@ -65,4 +65,77 @@ test("linked cameras preserve destination center and copy relative pan, directio
   );
   assert.equal(destination.camera.zoom, 2.5);
   assert.deepEqual(source.controls.target.toArray(), [11, 22, 33]);
+});
+
+function comparisonScene() {
+  return Object.assign(Object.create(FootpathScene.prototype), {
+    camera: new OrthographicCamera(-1, 1, 1, -1, 0.01, 100),
+    controls: { target: new Vector3(), update() {}, enableDamping: true },
+    cloud: new Group(),
+    grid: new Group(),
+    selected: new Group(),
+    visibleSides: { 1: true, 2: true },
+    opacity: 0,
+    view: "3d",
+    makeGrid() {},
+    updateLabelVisibility() {},
+  });
+}
+
+function comparisonData(min, max) {
+  return {
+    segments: [{ side: 1, points: [min, max] }],
+    viewBounds: { min, max },
+  };
+}
+
+test("scrubbing within fixed bounds preserves a manually positioned camera", () => {
+  const scene = comparisonScene();
+  const data = comparisonData([-1, -0.1, 0], [0, 0.1, 0.3]);
+  scene.setData(data, false, true);
+  scene.view = "free";
+  scene.camera.position.set(2, -4, 3);
+  scene.camera.zoom = 1.5;
+  scene.controls.target.set(0.2, 0.1, 0.3);
+  const next = structuredClone(data);
+  next.segments[0].points = [
+    [-0.6, 0, 0.1],
+    [-0.1, 0.1, 0.2],
+  ];
+  scene.setData(next, false, true);
+  assert.equal(scene.view, "free");
+  assert.equal(scene.camera.zoom, 1.5);
+  assert.deepEqual(scene.camera.position.toArray(), [2, -4, 3]);
+  assert.deepEqual(scene.controls.target.toArray(), [0.2, 0.1, 0.3]);
+});
+
+test("changing baseline bounds recenters and fits the complete comparison", () => {
+  const scene = comparisonScene();
+  scene.view = "side";
+  scene.setData(comparisonData([-1, -0.1, 0], [0, 0.1, 0.3]), false, true);
+  const initialZoom = scene.camera.zoom;
+  for (const [min, max] of [
+    [
+      [-4, -1, 0],
+      [1, 1, 2],
+    ],
+    [
+      [4, 1, 0],
+      [9, 3, 2],
+    ],
+  ]) {
+    scene.setData(comparisonData(min, max), false, true);
+    assert.equal(scene.view, "side");
+    assert.ok(scene.camera.zoom < initialZoom);
+    assert.deepEqual(
+      scene.controls.target.toArray(),
+      min.map((v, i) => (v + max[i]) / 2),
+    );
+    for (const x of [min[0], max[0]])
+      for (const y of [min[1], max[1]])
+        for (const z of [min[2], max[2]]) {
+          const projected = new Vector3(x, y, z).project(scene.camera);
+          assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1);
+        }
+  }
 });

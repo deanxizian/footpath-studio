@@ -132,7 +132,7 @@ export class FootpathScene {
   }
 
   setData(data, mirror, preserveCamera = false) {
-    const keepCamera = preserveCamera && this.data;
+    const previousBounds = preserveCamera ? this.box?.clone() : null;
     this.data = data;
     this.mirror = mirror;
     disposeGroup(this.cloud);
@@ -149,6 +149,9 @@ export class FootpathScene {
       this.box.max.set(...data.viewBounds.max);
     }
     this.center = this.box.getCenter(new THREE.Vector3());
+    // Scrubbing keeps a fixed whole-run box; a different baseline may need
+    // a new center and zoom so that its full trajectory remains visible.
+    const keepCamera = previousBounds?.equals(this.box);
     for (const side of [1, 2]) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute(
