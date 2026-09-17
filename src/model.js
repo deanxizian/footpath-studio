@@ -90,7 +90,10 @@ export function pairedIndices(data, selectedIndex) {
 }
 
 export function plotPoint(point, side, mirror) {
-  return [point[0], mirror && side === 1 ? -point[1] : point[1], point[2]];
+  // Stryd's visualizer converts raw Y to -Y before plotting in 3D.
+  // Apply the optional left-foot overlay after that coordinate conversion.
+  const y = -point[1];
+  return [point[0], mirror && side === 1 ? -y : y, point[2]];
 }
 
 export function lineSegmentPositions(segments, side, mirror) {

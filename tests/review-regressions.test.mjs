@@ -8,6 +8,7 @@ import {
   targetSpeedOptions,
 } from "../src/history-model.js";
 import { FootpathScene } from "../src/scene.js";
+import { plotPoint } from "../src/model.js";
 
 test("distinct retained imports remain independently addressable", () => {
   const first = createDemoRun(0);
@@ -89,6 +90,77 @@ function comparisonData(min, max) {
   };
 }
 
+test("display coordinates match Stryd's Y convention without modifying source points", () => {
+  const left = [0.1, -0.04, 0.2];
+  const right = [0.1, 0.05, 0.2];
+  assert.deepEqual(plotPoint(left, 1, false), [0.1, 0.04, 0.2]);
+  assert.deepEqual(plotPoint(right, 2, false), [0.1, -0.05, 0.2]);
+  assert.deepEqual(plotPoint(left, 1, true), [0.1, -0.04, 0.2]);
+  assert.deepEqual(plotPoint(right, 2, true), [0.1, -0.05, 0.2]);
+  assert.deepEqual(left, [0.1, -0.04, 0.2]);
+  assert.deepEqual(right, [0.1, 0.05, 0.2]);
+});
+
+test("rear view looks forward and places the unmirrored left foot on screen left with Z pointing up", () => {
+  const scene = comparisonScene();
+  const left = [0, -0.05, 0.1];
+  const right = [0, 0.05, 0.1];
+  scene.setData(
+    {
+      segments: [
+        { side: 1, points: [[0, 0, 0], left] },
+        { side: 2, points: [[0, 0, 0], right] },
+      ],
+    },
+    false,
+  );
+  scene.setView("back");
+  assert.ok(scene.camera.getWorldDirection(new Vector3()).x > 0.99);
+  const leftGeometry = scene.cloud.children.find(
+    (line) => line.userData.side === 1,
+  ).geometry;
+  const rightGeometry = scene.cloud.children.find(
+    (line) => line.userData.side === 2,
+  ).geometry;
+  const leftScreen = new Vector3()
+    .fromBufferAttribute(leftGeometry.getAttribute("position"), 1)
+    .project(scene.camera);
+  const rightScreen = new Vector3()
+    .fromBufferAttribute(rightGeometry.getAttribute("position"), 1)
+    .project(scene.camera);
+  const groundScreen = new Vector3(
+    ...plotPoint([0, left[1], 0], 1, false),
+  ).project(scene.camera);
+  assert.ok(
+    leftScreen.x < rightScreen.x,
+    "left foot must appear left of right foot",
+  );
+  assert.ok(
+    leftScreen.y > groundScreen.y,
+    "positive Z must point up on screen",
+  );
+  for (const offset of [
+    [-3, 3, 0.6],
+    [-3, -3, 0.6],
+  ]) {
+    scene.camera.position
+      .copy(scene.controls.target)
+      .add(new Vector3(...offset));
+    scene.camera.lookAt(scene.controls.target);
+    scene.camera.updateMatrixWorld();
+    const leftOblique = new Vector3()
+      .fromBufferAttribute(leftGeometry.getAttribute("position"), 1)
+      .project(scene.camera);
+    const rightOblique = new Vector3()
+      .fromBufferAttribute(rightGeometry.getAttribute("position"), 1)
+      .project(scene.camera);
+    assert.ok(
+      leftOblique.x < rightOblique.x,
+      "both rear oblique angles must retain the feet's left/right order",
+    );
+  }
+});
+
 test("scrubbing within fixed bounds preserves a manually positioned camera", () => {
   const scene = comparisonScene();
   const data = comparisonData([-1, -0.1, 0], [0, 0.1, 0.3]);
@@ -127,14 +199,24 @@ test("changing baseline bounds recenters and fits the complete comparison", () =
     scene.setData(comparisonData(min, max), false, true);
     assert.equal(scene.view, "side");
     assert.ok(scene.camera.zoom < initialZoom);
-    assert.deepEqual(
-      scene.controls.target.toArray(),
-      min.map((v, i) => (v + max[i]) / 2),
+    assert.equal(
+      scene.controls.target.distanceTo(
+        new Vector3(
+          ...plotPoint(
+            min.map((v, i) => (v + max[i]) / 2),
+            2,
+            false,
+          ),
+        ),
+      ),
+      0,
     );
     for (const x of [min[0], max[0]])
       for (const y of [min[1], max[1]])
         for (const z of [min[2], max[2]]) {
-          const projected = new Vector3(x, y, z).project(scene.camera);
+          const projected = new Vector3(
+            ...plotPoint([x, y, z], 2, false),
+          ).project(scene.camera);
           assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1);
         }
   }

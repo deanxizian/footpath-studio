@@ -276,7 +276,7 @@ export default function App({ history, source = "archive" }) {
       data-baseline-days={baseline.days}
     >
       <header className="studio-header">
-        <h1>
+        <h1 className="studio-brand">
           Footpath <span>Studio</span>
         </h1>
         <span>

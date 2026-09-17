@@ -101,13 +101,16 @@ h3 span {
   align-items: center;
   justify-content: space-between;
 }
-.studio-header h1 {
-  font-size: 18px;
+.studio-brand {
+  color: var(--left);
+  font-size: 20px;
   letter-spacing: -0.3px;
   font-weight: 600;
+  white-space: nowrap;
 }
-.studio-header h1 span {
+.studio-brand > span {
   font-weight: 400;
+  color: var(--right);
 }
 .studio-header > span {
   color: var(--muted);
@@ -235,8 +238,10 @@ h3 span {
 }
 .studio-panel {
   background: #17191c;
-  border: 1px solid var(--border);
+  border: 1px solid #3d4652;
+  border-top-color: #566170;
   border-radius: 5px;
+  box-shadow: 0 4px 16px #0000001a;
   min-width: 0;
   overflow: hidden;
 }
@@ -286,6 +291,7 @@ h3 span {
   gap: 16px;
   padding: 0 18px 10px;
   font-size: 11px;
+  background: #1c2026;
 }
 .trajectory-options label,
 .trajectory-feet {
@@ -374,6 +380,27 @@ h3 span {
   display: flex;
   align-items: center;
   gap: 16px;
+  background: #1c2026;
+}
+.panel-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #f2f5f9;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.panel-heading h2::before {
+  content: "";
+  width: 3px;
+  height: 18px;
+  flex: none;
+  border-radius: 2px;
+  background: linear-gradient(
+    to bottom,
+    var(--left) 0 50%,
+    var(--right) 50% 100%
+  );
 }
 .panel-meta {
   color: var(--muted);
@@ -829,7 +856,7 @@ h3 span {
     height: 47px;
   }
   .studio-header h1 {
-    font-size: 16px;
+    font-size: 18px;
   }
   .studio-header > span {
     font-size: 10px;
