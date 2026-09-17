@@ -131,7 +131,8 @@ export class FootpathScene {
     }
   }
 
-  setData(data, mirror) {
+  setData(data, mirror, preserveCamera = false) {
+    const keepCamera = preserveCamera && this.data;
     this.data = data;
     this.mirror = mirror;
     disposeGroup(this.cloud);
@@ -168,7 +169,8 @@ export class FootpathScene {
       this.cloud.add(lines);
     }
     this.makeGrid();
-    this.setView(this.view === "free" ? "3d" : this.view);
+    if (!keepCamera) this.setView(this.view === "free" ? "3d" : this.view);
+    else this.updateLabelVisibility();
     this.applyVisibility();
   }
 
@@ -226,7 +228,7 @@ export class FootpathScene {
       label("X", [upper[0] + gridStep * 0.3, 0, 0], fontSize * 1.3, "x"),
     );
     this.grid.add(
-      label("Y", [0, b.max.y + gridStep * 0.35, 0], fontSize * 1.3, "y"),
+      label("Y", [0, upper[1] + gridStep * 0.3, 0], fontSize * 1.3, "y"),
     );
     this.grid.add(
       label("Z", [0, 0, upper[2] + gridStep * 0.8], fontSize * 1.3, "z"),
@@ -242,8 +244,8 @@ export class FootpathScene {
         ),
       );
     }
-    // Sparse ticks keep the canvas legible while rotating.
-    for (let x = lower[0]; x <= upper[0] + 1e-8; x += gridStep * 2) {
+    // All three axes use the same coordinate increment.
+    for (let x = lower[0]; x <= upper[0] + 1e-8; x += gridStep) {
       this.grid.add(
         label(
           Number(x.toFixed(4)).toString(),
@@ -253,7 +255,7 @@ export class FootpathScene {
         ),
       );
     }
-    for (let y = lower[1]; y <= upper[1] + 1e-8; y += gridStep * 2) {
+    for (let y = lower[1]; y <= upper[1] + 1e-8; y += gridStep) {
       if (
         Math.abs(y) > 1e-8 &&
         y >= b.min.y - gridStep * 0.75 &&
@@ -317,7 +319,7 @@ export class FootpathScene {
     this.updateLabelVisibility();
     let maxX = 0,
       maxY = 0;
-    const padding = this.box.getSize(new THREE.Vector3()).length() * 0.13;
+    const padding = this.box.getSize(new THREE.Vector3()).length() * 0.06;
     const box = this.box.clone().expandByScalar(padding);
     for (const x of [box.min.x, box.max.x])
       for (const y of [box.min.y, box.max.y])
@@ -333,7 +335,7 @@ export class FootpathScene {
       maxX = Math.max(maxX, Math.abs(projected.x));
       maxY = Math.max(maxY, Math.abs(projected.y));
     }
-    this.camera.zoom = 0.92 / Math.max(maxX, maxY, 0.01);
+    this.camera.zoom = 0.94 / Math.max(maxX, maxY, 0.01);
     this.camera.updateProjectionMatrix();
   }
 
