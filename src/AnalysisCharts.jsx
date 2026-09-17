@@ -18,6 +18,11 @@ export const FOOT_COLORS = {
 };
 export const valueText = (value, digits = 1) =>
   Number.isFinite(value) ? value.toFixed(digits) : "—";
+export const metricText = (value, metric) =>
+  valueText(
+    Number.isFinite(value) ? value * (metric.displayScale ?? 1) : null,
+    metric.digits,
+  );
 export const signedText = (value, digits = 1) =>
   Number.isFinite(value)
     ? `${value > 0 ? "+" : ""}${Math.abs(value) < 0.5 * 10 ** -digits ? (0).toFixed(digits) : value.toFixed(digits)}`
@@ -57,10 +62,10 @@ function TrendTooltip({ active, payload, metric, difference }) {
       ) : (
         <>
           <p className="foot-left">
-            左脚 {valueText(row.left, metric.digits)} {metric.unit}
+            左脚 {metricText(row.left, metric)} {metric.unit}
           </p>
           <p className="foot-right">
-            右脚 {valueText(row.right, metric.digits)} {metric.unit}
+            右脚 {metricText(row.right, metric)} {metric.unit}
           </p>
         </>
       )}
@@ -146,9 +151,7 @@ export const HistoryPlot = memo(function HistoryPlot({
               width={58}
               tickCount={5}
               tickFormatter={(value) =>
-                difference
-                  ? `${value.toFixed(1)}%`
-                  : value.toFixed(metric.digits > 0 ? 3 : 0)
+                difference ? `${value.toFixed(1)}%` : metricText(value, metric)
               }
               tick={{ fill: "#969eaa", fontSize: 11 }}
               axisLine={false}

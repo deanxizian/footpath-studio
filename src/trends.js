@@ -1,9 +1,9 @@
 import { elapsed } from "./model.js";
 
 export const METRICS = [
-  { key: "zSpan", label: "Z 轴幅度", unit: "原始单位", digits: 4 },
-  { key: "xSpan", label: "X 轴幅度", unit: "原始单位", digits: 4 },
-  { key: "ySpan", label: "Y 轴幅度", unit: "原始单位", digits: 4 },
+  { key: "zSpan", label: "Z 轴幅度", unit: "m", digits: 4 },
+  { key: "xSpan", label: "X 轴幅度", unit: "m", digits: 4 },
+  { key: "ySpan", label: "Y 轴幅度", unit: "m", digits: 4 },
   { key: "groundContactTime", label: "触地时间", unit: "ms", digits: 0 },
   { key: "strideTime", label: "周期时间", unit: "ms", digits: 0 },
 ];
@@ -309,7 +309,7 @@ export function csvExport(data, analysis) {
           side === 1 ? "left" : "right",
           bin.summary[side].n,
           metric.key,
-          metric.unit === "原始单位" ? "raw_coordinate_unit" : metric.unit,
+          metric.unit,
           s.n,
           s.median,
           s.q25,

@@ -396,11 +396,7 @@ h3 span {
   height: 18px;
   flex: none;
   border-radius: 2px;
-  background: linear-gradient(
-    to bottom,
-    var(--left) 0 50%,
-    var(--right) 50% 100%
-  );
+  background: var(--left);
 }
 .panel-meta {
   color: var(--muted);

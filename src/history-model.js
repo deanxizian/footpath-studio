@@ -317,7 +317,7 @@ export function historyCsv(analysis, baseline) {
           run.activity?.name ?? run.title,
           side === 1 ? "left" : "right",
           metric.key,
-          metric.unit === "原始单位" ? "raw_coordinate_unit" : metric.unit,
+          metric.unit,
           s.n,
           s.median,
           s.q25,
