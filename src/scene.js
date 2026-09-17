@@ -145,8 +145,13 @@ export class FootpathScene {
         );
     }
     if (data.viewBounds) {
-      this.box.min.set(...data.viewBounds.min);
-      this.box.max.set(...data.viewBounds.max);
+      // Bounds use raw coordinates, with any optional overlay already included.
+      // Reorder the corners after the Y reflection, just like the plotted paths.
+      this.box.setFromPoints(
+        [data.viewBounds.min, data.viewBounds.max].map(
+          (point) => new THREE.Vector3(...plotPoint(point, 2, false)),
+        ),
+      );
     }
     this.center = this.box.getCenter(new THREE.Vector3());
     // Scrubbing keeps a fixed whole-run box; a different baseline may need
@@ -192,11 +197,8 @@ export class FootpathScene {
     const upper = [b.max.x, b.max.y, b.max.z].map(
       (n) => Math.ceil(n / gridStep) * gridStep,
     );
-    const padding = gridStep;
-    lower[0] -= padding;
-    lower[1] -= padding;
-    upper[0] += padding;
-    upper[1] += padding;
+    // Rounded tick bounds already leave room around the paths.
+    // Avoid an extra grid cell that would make camera fitting shrink them.
     const vertices = [];
     const add = (a, c) => vertices.push(...a, ...c);
     for (let x = lower[0]; x <= upper[0] + 1e-8; x += gridStep)
@@ -225,7 +227,7 @@ export class FootpathScene {
     };
     line([lower[0], 0, 0], [upper[0], 0, 0]);
     line([0, lower[1], 0], [0, upper[1], 0]);
-    line([0, 0, lower[2]], [0, 0, upper[2] + gridStep * 0.55]);
+    line([0, 0, lower[2]], [0, 0, upper[2] + gridStep * 0.25]);
     const fontSize = extent * 0.045;
     this.grid.add(
       label("X", [upper[0] + gridStep * 0.3, 0, 0], fontSize * 1.3, "x"),
@@ -234,7 +236,7 @@ export class FootpathScene {
       label("Y", [0, upper[1] + gridStep * 0.3, 0], fontSize * 1.3, "y"),
     );
     this.grid.add(
-      label("Z", [0, 0, upper[2] + gridStep * 0.8], fontSize * 1.3, "z"),
+      label("Z", [0, 0, upper[2] + gridStep * 0.45], fontSize * 1.3, "z"),
     );
     for (let z = gridStep; z <= upper[2] + 1e-8; z += gridStep) {
       line([0, 0, z], [gridStep * 0.1, 0, z]);
@@ -300,7 +302,7 @@ export class FootpathScene {
     this.controls.update();
     this.camera.up.set(0, 0, 1);
     const offsets = {
-      "3d": [1.35, -2.2, 1.15],
+      "3d": [-1.8, -1.8, 0.9],
       side: [0, -3, 0],
       back: [-3, 0, 0],
       top: [0, -0.00001, 3],
@@ -322,7 +324,7 @@ export class FootpathScene {
     this.updateLabelVisibility();
     let maxX = 0,
       maxY = 0;
-    const padding = this.box.getSize(new THREE.Vector3()).length() * 0.06;
+    const padding = this.box.getSize(new THREE.Vector3()).length() * 0.03;
     const box = this.box.clone().expandByScalar(padding);
     for (const x of [box.min.x, box.max.x])
       for (const y of [box.min.y, box.max.y])

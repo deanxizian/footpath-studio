@@ -160,6 +160,7 @@ export const HistoryPlot = memo(function HistoryPlot({
             <Tooltip
               content={<TrendTooltip metric={metric} difference={difference} />}
               cursor={{ stroke: "#687483", strokeDasharray: "3 3" }}
+              isAnimationActive={false}
             />
             {keys.map((key) => (
               <Line
